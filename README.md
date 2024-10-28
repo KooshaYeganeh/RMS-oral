@@ -1,2 +1,2 @@
-# ooc
-open oral Cancer Detection
+# ood
+open oral disease Detection
