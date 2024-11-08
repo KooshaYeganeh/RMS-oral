@@ -1,6 +1,9 @@
-# Oral Disease Diagnosis Application
+# rms-oral
 
 This application is designed to assist with the diagnosis of oral and dental diseases using advanced AI and deep learning techniques. Leveraging powerful frameworks like PyTorch and MONAI, the system is capable of analyzing oral disease images and providing accurate predictions to assist healthcare professionals in early diagnosis and treatment.
+
+
+![rms-oral](./AppImage/1.png)
 
 ## Table of Contents
 - [Features](#features)
@@ -26,8 +29,11 @@ This application is designed to assist with the diagnosis of oral and dental dis
 - **Packaging**: PyInstaller (for creating standalone executables)
 
 
-- **Note : Latest trained Data at : Mon 21 Oct 2024 08:24:36 PM**
-- **Number of Data : 150**
+- **Note1 : The data used in the machine learning section is sample Not REAL Data**
+- **Note2 : Latest trained Data at : Mon 21 Oct 2024 08:24:36 PM**
+- **Note3 : The software is currently under development**
+- **Number of oral Cancer Data : 150 -> Train with Scikit-learn**
+- **Number of Histopathologic Oral Cancer Data : 5192 -> Train with Monai**
 
 ## Installation
 
@@ -41,8 +47,8 @@ Ensure you have the following installed on your system:
 
 1. **Clone the repository**:
    ```bash
-   git clone https://gitlab.com/katayoun_katebi/oral_disease.git
-   cd oral_disease
+   git clone https://github.com/KooshaYeganeh/ood.git
+   cd ood-main
    ```
 
 2. **Set up a virtual environment (optional but recommended)**:
@@ -58,7 +64,7 @@ Ensure you have the following installed on your system:
 
 4. **Run the application**:
    ```bash
-   python app/Desktop.py
+   python rms-oral.py
    ```
 
 ### Additional Dependencies
@@ -83,6 +89,7 @@ If you want to build a standalone executable, install `pyinstaller`:
 ```bash
 pip install pyinstaller
 ```
+
 
 ## Usage
 
@@ -131,8 +138,6 @@ Artificial Intelligence (AI) is revolutionizing the healthcare industry, and den
 ### MONAI in Medical Imaging
 MONAI (Medical Open Network for AI) is a specialized open-source framework for deep learning in healthcare. It integrates with PyTorch and provides optimized tools for training AI models on medical images, such as X-rays and dental scans. This project uses MONAI to improve the accuracy and robustness of oral disease predictions.
 
-**Sample of Internet**
-![Deep Learning for Dental Disease sample](https://media.springernature.com/lw1200/springer-static/image/art%3A10.1007%2Fs13721-024-00459-0/MediaObjects/13721_2024_459_Fig3_HTML.png)  
 
 
 By combining CNN-based models with MONAI’s medical-specific deep learning tools, this app provides state-of-the-art predictions for various oral diseases. 
@@ -140,8 +145,10 @@ By combining CNN-based models with MONAI’s medical-specific deep learning tool
 ## License
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
-## Contributing
-We welcome contributions! If you'd like to contribute to this project, please fork the repository and submit a pull request with your changes.
+## Contributers
+
+**Dr Katayoun Katebi - Oral and Maxillofacial Medicine** : Consultant & Contributer(Domain Expert)
+
 
 ### Steps to Contribute:
 1. Fork the repository.
