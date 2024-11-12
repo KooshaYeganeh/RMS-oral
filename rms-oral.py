@@ -30,8 +30,21 @@ from kivy.uix.image import Image as myimage
 from sklearn.preprocessing import OrdinalEncoder
 import joblib
 from sklearn.preprocessing import MinMaxScaler
-
-
+# Image transformation for preprocessing
+import os
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torchvision import transforms
+from kivy.app import App
+from kivy.uix.button import Button
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.filechooser import FileChooserIconView
+from kivy.uix.screenmanager import Screen
+from kivy.uix.textinput import TextInput
+from kivy.graphics import Color
+from PIL import Image
+from torchvision import models, transforms
 
 
 
@@ -42,6 +55,282 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 Window.size = (1400, 800)
+
+
+
+"""
+The SimpleCNNOralDisease model is designed for multi-class classification of 12 different oral diseases. 
+It has three convolutional layers, each followed by a max-pooling layer, and two fully connected layers. """
+
+
+
+## Set device
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# Define the transformation for images
+oral_transform = transforms.Compose([
+    transforms.Resize((224, 224)),  # Resize image to the model's input size
+    transforms.ToTensor(),  # Convert image to PyTorch tensor
+    transforms.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5])  # Normalize tensor values
+])
+
+# Define class names for the 12 classes of oral diseases
+oral_disease_class_names = [
+    'aphtous_ulcer', 'denture_stomatitis', 'epulis_fissuratum',
+    'erythroplakia', 'fordyce_granules', 'geographic_tongue',
+    'herpes_labialis', 'intra_oral_herpes', 'leukoplakia',
+    'oral_lichen_planus', 'squamous_cell_carcinoma', 'traumatic_ulcer'
+]
+
+# SimpleCNN Model Definition
+class SimpleCNN_oral_disease(nn.Module):
+    def __init__(self):
+        super(SimpleCNN_oral_disease, self).__init__()
+        self.conv1 = nn.Conv2d(3, 16, kernel_size=3, stride=1, padding=1)
+        self.conv2 = nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1)
+        self.pool = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
+        self.fc1 = nn.Linear(32 * 56 * 56, 128)
+        self.fc2 = nn.Linear(128, 12)
+        self.dropout = nn.Dropout(0.5)  # Dropout with 50% probability
+
+    def forward(self, x):
+        x = self.pool(F.relu(self.conv1(x)))
+        x = self.pool(F.relu(self.conv2(x)))
+        x = x.view(-1, 32 * 56 * 56)
+        x = F.relu(self.fc1(x))
+        x = self.dropout(x)  # Apply dropout after the first fully connected layer
+        x = self.fc2(x)
+        return x
+
+
+# Initialize model
+oral_disease_model = SimpleCNN_oral_disease().to(device)
+
+# Load the pretrained model
+oral_disease_model.load_state_dict(torch.load('oral_disease_monai_model.pth', map_location=device))
+oral_disease_model.eval()
+
+def process_image_oral(image_path):
+    img = Image.open(image_path).convert('RGB')  # Ensure image is in RGB mode
+    img = oral_transform(img)  # Apply transformations
+    img = img.unsqueeze(0)  # Add batch dimension
+    return img.to(device)
+
+# Kivy Layout for Sidebar Menu
+class SideBar_oral(BoxLayout):
+    def __init__(self, app, **kwargs):
+        super(SideBar_oral, self).__init__(**kwargs)
+        self.orientation = 'vertical'
+        self.size_hint_x = None
+        self.width = '200dp'
+        self.spacing = 20
+        self.padding = 20
+        Color(0.1, 0.14, 0.13)
+
+        # Add sidebar buttons with navigation
+        self.add_widget(Button(text='Home', size_hint_y=None, height='50dp',
+                               background_color=[0, 1, 1, 0.5],
+                               color=(1, 1, 1, 1),
+                               on_press=lambda x: app.change_screen('home')))
+        self.add_widget(Button(text='About', size_hint_y=None, height='50dp',
+                               background_color=[0, 1, 1, 0.5],
+                               color=(1, 1, 1, 1),
+                               on_press=lambda x: app.change_screen('about')))
+        self.add_widget(Button(text='Contact', size_hint_y=None, height='50dp',
+                               background_color=[0, 1, 1, 0.5],
+                               color=(1, 1, 1, 1),
+                               on_press=lambda x: app.change_screen('contact')))
+
+
+# Kivy Screen for FileManager
+class FileManagerScreen_oral(Screen):
+    def __init__(self, name=None, **kwargs):
+        super(FileManagerScreen_oral, self).__init__(**kwargs)
+        layout = BoxLayout(orientation='horizontal')
+
+        # Sidebar
+        self.side_bar = SideBar_oral(App.get_running_app())
+        layout.add_widget(self.side_bar)
+
+        # File chooser for selecting image
+        content_layout = BoxLayout(orientation='vertical', padding=20, spacing=20)
+        self.name = name
+        self.file_chooser = FileChooserIconView()
+        self.file_chooser.size_hint = (1, 0.8)
+        content_layout.add_widget(self.file_chooser)
+
+        # Upload button
+        self.upload_button = Button(text="Upload and Predict", size_hint=(1, 0.1), background_color=[0, 1, 1, 0.5])
+        self.upload_button.bind(on_press=self.upload_and_predict_oral)
+        content_layout.add_widget(self.upload_button)
+
+        # TextInput to display prediction response
+        self.result_box = TextInput(text="", readonly=True, size_hint=(1, 0.1))
+        self.result_box.foreground_color = (1, 0, 0, 1)  # Set initial text color to red
+        content_layout.add_widget(self.result_box)
+
+        layout.add_widget(content_layout)
+        self.add_widget(layout)
+
+    def upload_and_predict_oral(self, instance):
+        selected_file = self.file_chooser.selection
+        if selected_file:
+            file_path = selected_file[0]
+            try:
+                # Process the image and transform only once
+                image = process_image_oral(file_path)  # Directly transform here and send to device
+
+                # Model prediction
+                with torch.no_grad():
+                    outputs = oral_disease_model(image)
+                    _, predicted = torch.max(outputs, 1)
+
+                # Map predicted index to class name
+                predicted_class = oral_disease_class_names[predicted.item()]
+                self.result_box.text = f"Predicted Oral Disease: {predicted_class}"
+
+            except Exception as e:
+                self.result_box.text = f"Error: {str(e)}"
+        else:
+            self.result_box.text = "Please select a file first."
+
+
+
+
+
+
+## RSnet18 algorithm for oral Disease 
+
+
+
+# Initialize the device (GPU or CPU)
+# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# # Define the transformation for image preprocessing
+# oral_transform = transforms.Compose([
+#     transforms.Resize((224, 224)),  # Resize to 224x224 for ResNet input
+#     transforms.ToTensor(),  # Convert image to PyTorch tensor
+#     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalize for ResNet
+# ])
+
+# # List of oral disease class names
+# oral_disease_class_names = [
+#     'aphtous_ulcer', 'denture_stomatitis', 'epulis_fissuratum',
+#     'erythroplakia', 'fordyce_granules', 'geographic_tongue',
+#     'herpes_labialis', 'intra_oral_herpes', 'leukoplakia',
+#     'oral_lichen_planus', 'squamous_cell_carcinoma', 'traumatic_ulcer'
+# ]
+
+# # Load the ResNet-18 model and modify the final layer for 12 output classes
+# resnet18_model = models.resnet18(pretrained=False)
+# resnet18_model.fc = nn.Linear(resnet18_model.fc.in_features, 12)
+# resnet18_model.load_state_dict(torch.load('best_resnet18_model.pth'))
+# resnet18_model = resnet18_model.to(device)
+# resnet18_model.eval()  # Set model to evaluation mode
+
+
+# def process_image_oral(image_path):
+#     """
+#     Function to process and transform the image.
+#     """
+#     img = Image.open(image_path).convert('RGB')  # Ensure the image is in RGB mode
+#     img = oral_transform(img)  # Apply transformations
+#     img = img.unsqueeze(0)  # Add batch dimension
+#     return img.to(device)  # Send image to the appropriate device (GPU or CPU)
+
+
+# class SideBar_oral(BoxLayout):
+#     """
+#     Sidebar layout with buttons for navigation.
+#     """
+#     def __init__(self, app, **kwargs):
+#         super().__init__(**kwargs)
+#         self.orientation = 'vertical'
+#         self.size_hint_x = None
+#         self.width = '200dp'
+#         self.spacing = 20
+#         self.padding = 20
+#         Color(0.1, 0.14, 0.13)  # Set background color for sidebar
+
+#         # Add buttons to the sidebar for different screens
+#         self.add_widget(Button(text='Home', size_hint_y=None, height='50dp',
+#                                background_color=[0, 1, 1, 0.5], color=(1, 1, 1, 1),
+#                                on_press=lambda x: app.change_screen('home')))
+#         self.add_widget(Button(text='About', size_hint_y=None, height='50dp',
+#                                background_color=[0, 1, 1, 0.5], color=(1, 1, 1, 1),
+#                                on_press=lambda x: app.change_screen('about')))
+#         self.add_widget(Button(text='Contact', size_hint_y=None, height='50dp',
+#                                background_color=[0, 1, 1, 0.5], color=(1, 1, 1, 1),
+#                                on_press=lambda x: app.change_screen('contact')))
+
+
+# class FileManagerScreen_oral(Screen):
+#     """
+#     Screen to handle file selection, upload, and prediction for oral diseases.
+#     """
+#     def __init__(self, name=None, **kwargs):
+#         super().__init__(**kwargs)
+#         layout = BoxLayout(orientation='horizontal')
+
+#         # Sidebar
+#         self.side_bar = SideBar_oral(App.get_running_app())
+#         layout.add_widget(self.side_bar)
+
+#         # Content layout for file chooser and prediction button
+#         content_layout = BoxLayout(orientation='vertical', padding=20, spacing=20)
+#         self.name = name
+#         self.file_chooser = FileChooserIconView()
+#         self.file_chooser.size_hint = (1, 0.8)
+#         content_layout.add_widget(self.file_chooser)
+
+#         # Upload button to trigger prediction
+#         self.upload_button = Button(text="Upload and Predict", size_hint=(1, 0.1), background_color=[0, 1, 1, 0.5])
+#         self.upload_button.bind(on_press=self.upload_and_predict_oral)
+#         content_layout.add_widget(self.upload_button)
+
+#         # TextInput to display the prediction result
+#         self.result_box = TextInput(text="", readonly=True, size_hint=(1, 0.1))
+#         self.result_box.foreground_color = (1, 0, 0, 1)  # Set initial text color to red
+#         content_layout.add_widget(self.result_box)
+
+#         layout.add_widget(content_layout)
+#         self.add_widget(layout)
+
+#     def upload_and_predict_oral(self, instance):
+#         """
+#         Handles the file upload and prediction process.
+#         """
+#         selected_file = self.file_chooser.selection
+#         if selected_file:
+#             file_path = selected_file[0]
+#             try:
+#                 # Process the image and transform it
+#                 image = process_image_oral(file_path)  # Directly transform here and send to device
+
+#                 # Perform prediction using the model
+#                 with torch.no_grad():
+#                     outputs = resnet18_model(image)
+#                     _, predicted = torch.max(outputs, 1)  # Get the predicted class
+
+#                 # Map predicted index to class name and display the result
+#                 predicted_class = oral_disease_class_names[predicted.item()]
+#                 self.result_box.text = f"Predicted Oral Disease: {predicted_class}"
+
+#             except Exception as e:
+#                 self.result_box.text = f"Error: {str(e)}"
+#         else:
+#             self.result_box.text = "Please select a file first."
+
+
+
+
+
+
+
+# histopathologic cancer Detection
+
+
+
 
 """Input: RGB images of size 224x224 pixels.
 Architecture:
@@ -66,49 +355,6 @@ class SimpleCNN_cancer(nn.Module):
         return x
 
 
-"""
-The SimpleCNNOralDisease model is designed for multi-class classification of 12 different oral diseases. 
-It has three convolutional layers, each followed by a max-pooling layer, and two fully connected layers. """
-
-# SimpleCNN Model Definition
-class SimpleCNNOralDisease(nn.Module):
-    def __init__(self, num_classes):
-        super(SimpleCNNOralDisease, self).__init__()
-        self.conv1 = nn.Conv2d(3, 16, kernel_size=3, padding=1)
-        self.conv2 = nn.Conv2d(16, 32, kernel_size=3, padding=1)
-        self.conv3 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
-        self.pool = nn.MaxPool2d(2, 2)
-        self.fc1 = nn.Linear(64 * 16 * 16, 128)
-        self.fc2 = nn.Linear(128, num_classes)
-
-    def forward(self, x):
-        x = self.pool(F.relu(self.conv1(x)))
-        x = self.pool(F.relu(self.conv2(x)))
-        x = self.pool(F.relu(self.conv3(x)))
-        x = x.view(-1, 64 * 16 * 16)
-        x = F.relu(self.fc1(x))
-        x = self.fc2(x)
-        return x
-
-
-
-
-
-
-"""
-Input: RGB images resized to 128x128 pixels.
-Architecture:
-
-    Three convolutional layers with increasing filters (16, 32, 64).
-    Max pooling after each convolution to reduce spatial dimensions.
-    Two fully connected layers with ReLU activations.
-
-Output: Probability scores for 12 different oral diseases. """
-
-# Load the model and set it to evaluation mode
-oral_disease_model = SimpleCNNOralDisease(num_classes=12)
-oral_disease_model.load_state_dict(torch.load('oral_disease_model.pth', map_location=device))
-oral_disease_model.eval()
 
 
 
@@ -116,19 +362,9 @@ oral_disease_model.eval()
 The SimpleCNN_cancer model is a simple CNN architecture for binary classification of oral cancer. It takes an input image,
 processes it through convolutional and pooling layers, and finally outputs a prediction for two classes (Normal or Abnormal)
 """
-cancer_model = SimpleCNN_cancer().to(device)
-cancer_model.load_state_dict(torch.load('histopathologic_oral_cancer_model.pth', map_location=device))
-cancer_model.eval()
-
-
-# Transform for input image
-transform = transforms.Compose([
-    transforms.Resize((128, 128)),
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-])
-
-
+histopathologic_cancer_model = SimpleCNN_cancer().to(device)
+histopathologic_cancer_model.load_state_dict(torch.load('histopathologic_oral_cancer_model.pth', map_location=device))
+histopathologic_cancer_model.eval()
 
 
 # Transform for input image for cancer detection
@@ -139,18 +375,9 @@ cancer_transform = transforms.Compose([
 ])
 
 
-# Define class names for the 12 classes of oral diseases
-oral_disease_class_names = [
-    'denture_stomatitis', 'desquamative_gingivitis', 'epulis_fissuratum', 
-    'erosive_and_ulcerative_oral_lichen_planus', 'erythroplakia', 'geographic_tongue', 
-    'leukoplakia', 'lichenoid_reaction', 'plaque_type_oral_lichen_planus', 
-    'reticular_and_papular_oral_lichen_planus', 'squamous_cell_carcinoma', 'traumatic_ulcer'
-]
-
-# Kivy Layout for Sidebar Menu
-class SideBar(BoxLayout):
+class SideBar_histopathologic(BoxLayout):
     def __init__(self, app, **kwargs):
-        super(SideBar, self).__init__(**kwargs)
+        super(SideBar_histopathologic, self).__init__(**kwargs)
         self.orientation = 'vertical'
         self.size_hint_x = None
         self.width = '200dp'
@@ -172,77 +399,13 @@ class SideBar(BoxLayout):
                                color=(1, 1, 1, 1), 
                                on_press=lambda x: app.change_screen('contact')))
 
-# File Manager Screen
-IMG_SIZE = (64, 64)
-class FileManagerScreen(Screen):
-    def __init__(self, **kwargs):
-        super(FileManagerScreen, self).__init__(**kwargs)
-        layout = BoxLayout(orientation='horizontal')
-
-        # Sidebar
-        self.side_bar = SideBar(App.get_running_app())
-        layout.add_widget(self.side_bar)
-
-        # File chooser for selecting image
-        content_layout = BoxLayout(orientation='vertical', padding=20, spacing=20)
-        self.file_chooser = FileChooserIconView()
-        self.file_chooser.size_hint = (1, 0.8)
-        content_layout.add_widget(self.file_chooser)
-        Color(0.1, 0.14, 0.13)
-
-        # Upload button
-        self.upload_button = Button(text="Upload and Predict", size_hint=(1, 0.1) ,  background_color =  [0, 1, 1, 0.5])
-        self.upload_button.bind(on_press=self.upload_and_predict)
-        content_layout.add_widget(self.upload_button)
-
-        # TextInput to display prediction response
-        self.result_box = TextInput(text="", readonly=True, size_hint=(1, 0.1))
-        self.result_box.foreground_color = (1, 0, 0, 1)  # Set initial text color to red
-        content_layout.add_widget(self.result_box)
-
-        layout.add_widget(content_layout)
-        self.add_widget(layout)
-
-    def upload_and_predict(self, instance):
-        selected_file = self.file_chooser.selection
-        if selected_file:
-            file_path = selected_file[0]
-            try:
-                # Load and process the image
-                image = Image.open(file_path)
-                image = image.resize(IMG_SIZE)  # Resize to 64x64
-                image = transform(image).unsqueeze(0)  # Add batch dimension
-
-                # Move image to the same device as the model (CPU or GPU)
-                image = image.to(torch.device('cpu'))  # or .to(device) if using GPU
-
-                # Set the model to evaluation mode
-                oral_disease_model.eval()
-
-                # Make prediction with PyTorch model
-                with torch.no_grad():
-                    output = oral_disease_model(image)  # Forward pass through the model
-                    _, predicted = torch.max(output, 1)  # Get the predicted class
-
-                predicted_class = oral_disease_class_names[predicted.item()]  # Map the predicted index to class name
-
-                # Display result
-                self.result_box.text = f"Predicted Oral Disease: {predicted_class}"
-
-            except Exception as e:
-                self.result_box.text = f"Error: {str(e)}"
-        else:
-            self.result_box.text = "Please select a file first."
-
-
-
 
 class CancerDetectionScreen(Screen):
     def __init__(self, **kwargs):
         super(CancerDetectionScreen, self).__init__(**kwargs)
         layout = BoxLayout(orientation='horizontal')
 
-        self.side_bar = SideBar(App.get_running_app())
+        self.side_bar = SideBar_histopathologic(App.get_running_app())
         layout.add_widget(self.side_bar)
 
         # File chooser for selecting image
@@ -275,7 +438,7 @@ class CancerDetectionScreen(Screen):
 
                 # Model prediction
                 with torch.no_grad():
-                    outputs = cancer_model(image)
+                    outputs = histopathologic_cancer_model(image)
                     _, predicted = torch.max(outputs, 1)
 
                 # Map predicted index to class name
@@ -725,6 +888,31 @@ class MyApp(App):
 
 
 
+class SideBar_about(BoxLayout):
+    def __init__(self, app, **kwargs):
+        super(SideBar_about, self).__init__(**kwargs)
+        self.orientation = 'vertical'
+        self.size_hint_x = None
+        self.width = '200dp'
+        self.spacing = 20
+        self.padding = 20
+        Color(0.1, 0.14, 0.13)
+
+        # Add sidebar buttons with navigation
+        self.add_widget(Button(text='Home', size_hint_y=None, height='50dp',
+                               background_color =  [0, 1, 1, 0.5], 
+                               color=(1, 1, 1, 1), 
+                               on_press=lambda x: app.change_screen('home')))
+        self.add_widget(Button(text='About', size_hint_y=None, height='50dp', 
+                               background_color =  [0, 1, 1, 0.5], 
+                               color=(1, 1, 1, 1), 
+                               on_press=lambda x: app.change_screen('about')))
+        self.add_widget(Button(text='Contact', size_hint_y=None, height='50dp', 
+                               background_color =  [0, 1, 1, 0.5], 
+                               color=(1, 1, 1, 1), 
+                               on_press=lambda x: app.change_screen('contact')))
+
+
 
 # About and Contact Screens (unchanged)
 class AboutScreen(Screen):
@@ -735,7 +923,7 @@ class AboutScreen(Screen):
         layout = BoxLayout(orientation='horizontal')
 
         # Sidebar
-        self.side_bar = SideBar(App.get_running_app())
+        self.side_bar = SideBar_about(App.get_running_app())
         layout.add_widget(self.side_bar)
 
         # Content layout for the 'About Us' text
@@ -802,7 +990,7 @@ class ContactScreen(Screen):
         layout = BoxLayout(orientation='horizontal')
 
         # Sidebar
-        self.side_bar = SideBar(App.get_running_app())
+        self.side_bar = SideBar_about(App.get_running_app())
         layout.add_widget(self.side_bar)
         Color(0.1, 0.14, 0.13)
 
@@ -830,7 +1018,7 @@ class OralPredictorApp(App):
         self.screen_manager.add_widget(HomeScreen(name='home'))
         self.screen_manager.add_widget(CancerDetectionScreen(name='cancer_detection'))
         self.screen_manager.add_widget(CancerDetectionScreen_ML(name='cancer_detection_ml'))
-        self.screen_manager.add_widget(FileManagerScreen(name='file_manager'))
+        self.screen_manager.add_widget(FileManagerScreen_oral(name='file_manager'))
         self.screen_manager.add_widget(AboutScreen(name='about'))
         self.screen_manager.add_widget(ContactScreen(name='contact'))
 
