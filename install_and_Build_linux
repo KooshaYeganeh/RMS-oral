@@ -1,0 +1,89 @@
+#!/bin/bash
+
+# Clone the repository
+echo "Cloning repository..."
+if git clone https://github.com/KooshaYeganeh/RMS-oral.git; then
+    echo "Repository cloned successfully."
+else
+    echo "Failed to clone repository. Exiting."
+    exit 1
+fi
+
+cd RMS-oral || { echo "Failed to enter RMS-oral directory. Exiting."; exit 1; }
+
+# Install virtualenv if it's not installed
+if ! command -v virtualenv &> /dev/null; then
+    echo "Installing virtualenv..."
+    if sudo pip3 install virtualenv; then
+        echo "virtualenv installed successfully."
+    else
+        echo "Failed to install virtualenv. Exiting."
+        exit 1
+    fi
+else
+    echo "virtualenv already installed."
+fi
+
+# Create and activate the virtual environment
+echo "Setting up virtual environment..."
+if virtualenv venv; then
+    echo "Virtual environment created successfully."
+else
+    echo "Failed to create virtual environment. Exiting."
+    exit 1
+fi
+
+source venv/bin/activate
+if [ $? -eq 0 ]; then
+    echo "Virtual environment activated."
+else
+    echo "Failed to activate virtual environment. Exiting."
+    exit 1
+fi
+
+# Install dependencies
+echo "Installing requirements..."
+if pip3 install -r requirements.txt; then
+    echo "Requirements installed successfully."
+else
+    echo "Failed to install all required packages. Exiting."
+    deactivate
+    exit 1
+fi
+
+# Build the executable with PyInstaller
+echo "Building executable with PyInstaller..."
+if pyinstaller rms_cancer_desktop.linux.spec; then
+    echo "Executable build initiated."
+else
+    echo "PyInstaller failed to build the executable. Exiting."
+    deactivate
+    exit 1
+fi
+
+# Confirm that the build was successful
+if [ -f "dist/rms_camcer_desktop.linux" ]; then
+    echo "Executable created successfully."
+else
+    echo "Executable not found. Build may have failed. Exiting."
+    deactivate
+    exit 1
+fi
+
+# Get the current directory
+mydir=$(pwd)
+
+# Navigate to /usr/local/bin and create a soft link
+echo "Linking executable to /usr/local/bin as 'rms-oral'..."
+cd /usr/local/bin || { echo "Failed to access /usr/local/bin. Exiting."; exit 1; }
+if sudo ln -sf "$mydir/dist/rms_camcer_desktop.linux" rms-oral; then
+    echo "Executable linked successfully as 'rms-oral'."
+else
+    echo "Failed to create link in /usr/local/bin. Exiting."
+    exit 1
+fi
+
+# Clean up and deactivate the virtual environment
+deactivate
+echo "Setup complete. You can now run the application using 'rms-oral'."
+
