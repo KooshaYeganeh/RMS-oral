@@ -938,7 +938,7 @@ class AboutScreen(Screen):
             "About the Application:\n\n"
             "This application is designed to diagnose oral and dental diseases using deep learning techniques.\n"
             "It leverages a Convolutional Neural Network (CNN) model trained on a variety of oral disease images\n"
-            "to provide accurate predictions. The collection and organization of data was done by Dr. Ketayoun Katbi,\n"
+            "to provide accurate predictions. The collection and organization of data was done by Dr. Ketayoun Katebi,\n"
             "who also contributed as a domain expert in this project.\n\n"
             "Key Features:\n"
             "- Portable\n"
