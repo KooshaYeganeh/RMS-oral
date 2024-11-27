@@ -3,7 +3,13 @@
 This application is designed to assist with the diagnosis of oral and dental diseases using advanced AI and deep learning techniques. Leveraging powerful frameworks like PyTorch and MONAI, the system is capable of analyzing oral disease images and providing accurate predictions to assist healthcare professionals in early diagnosis and treatment.
 
 
+### Version 1
+
 ![rms-oral](./AppImage/1.png)
+
+### Version 2
+
+![rms-oral-v2](./AppImage/v2.png)
 
 ## Table of Contents
 - [Features](#features)
@@ -23,9 +29,9 @@ This application is designed to assist with the diagnosis of oral and dental dis
 - **Cross-Platform Support**: Runs on Linux, Windows, and macOS.
 
 ## Technology Stack
-- **UI Framework**: Kivy (for cross-platform graphical user interface)
+- **UI Framework**: Kivy (for cross-platform graphical user interface) for First Version and Web GUI for second Version
 - **Deep Learning Frameworks**: PyTorch & MONAI (for medical imaging and AI models)
-- **Image Processing**: Pillow (for image handling)
+- **Image Processing**: Pillow (for image handling) and Scikit-Image
 - **Packaging**: PyInstaller (for creating standalone executables)
 
 
@@ -35,7 +41,7 @@ This application is designed to assist with the diagnosis of oral and dental dis
 - **Number of oral Cancer Data : 150 -> Train with Scikit-learn**
 - **Number of Histopathologic Oral Cancer Data : 5192 -> Train with Monai**
 
-## Installation
+## Providing a development environment 
 
 ### Prerequisites
 Ensure you have the following installed on your system:
@@ -71,7 +77,8 @@ Ensure you have the following installed on your system:
 
 Ensure you have the following Python libraries installed:
 
-- **Kivy**: For building the UI.
+- **Kivy**: For building the UI For First Version.
+- **Kivy**: Flask and Bootstrap web GUI for Second Version.
 - **Pillow**: For image handling and processing.
 - **PyTorch**: For deep learning model development and predictions.
 - **MONAI**: For advanced AI workflows in medical image processing and deep learning.
@@ -91,12 +98,15 @@ pip install pyinstaller
 ```
 
 
+
+
+
 ## Usage
 
 1. **Run the App**:
    After installing, you can run the application with:
    ```bash
-   python app/Desktop.py
+   python rms-oral.py
    ```
 
 2. **Upload Images**:
@@ -115,10 +125,16 @@ To build a standalone executable for distribution:
    pip install pyinstaller
    ```
 
-2. **Create the Executable**:
+2-1. **Create the Executable File for Linux**:
    Run the following command to package the application:
    ```bash
    pyinstaller --onefile --windowed app/Desktop.py
+   ```
+
+2-2. **Create Executable For MSwindows**
+
+   ```
+   pyinstaller app.py --onefile --add-data "templates;templates" --add-data "static;static" --icon=icon.ico -n webvieworal.exe --hidden-import=sklearn.ensemble._forest --hidden-import=sklearn.tree._tree --hidden-import=joblib --hidden-import=sklearn.impute
    ```
 
    This will generate a standalone executable in the `dist` folder that can be distributed to users without requiring Python or additional dependencies.
@@ -148,6 +164,7 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 ## Contributers
 
 **Dr Katayoun Katebi - Oral and Maxillofacial Medicine** : Consultant & Contributer(Domain Expert)
+**Professor Soodabeh Kimyai - Oral and Maxillofacial Medicine** : Consultant & Contributer(Restorative and aesthetic medicine Domain Expert)
 
 
 ### Steps to Contribute:
@@ -163,3 +180,9 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 - The data related to machine learning is in the form of a sample, and if you want to use this software in a stable way, put your csv file and train it.
 - The data related to Oral Disease Detection is very limited and cannot be guaranteed. Therefore, if needed, you can replace your data (The data will be updated regularly and the train file will be updated)
 - Histopathologic Oral Cancer Detection data were taken from kaggle site.
+
+
+
+
+
+
