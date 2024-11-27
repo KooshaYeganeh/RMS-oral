@@ -199,127 +199,6 @@ class FileManagerScreen_oral(Screen):
 
 
 
-## RSnet18 algorithm for oral Disease 
-
-
-
-# Initialize the device (GPU or CPU)
-# device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# # Define the transformation for image preprocessing
-# oral_transform = transforms.Compose([
-#     transforms.Resize((224, 224)),  # Resize to 224x224 for ResNet input
-#     transforms.ToTensor(),  # Convert image to PyTorch tensor
-#     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])  # Normalize for ResNet
-# ])
-
-# # List of oral disease class names
-# oral_disease_class_names = [
-#     'aphtous_ulcer', 'denture_stomatitis', 'epulis_fissuratum',
-#     'erythroplakia', 'fordyce_granules', 'geographic_tongue',
-#     'herpes_labialis', 'intra_oral_herpes', 'leukoplakia',
-#     'oral_lichen_planus', 'squamous_cell_carcinoma', 'traumatic_ulcer'
-# ]
-
-# # Load the ResNet-18 model and modify the final layer for 12 output classes
-# resnet18_model = models.resnet18(pretrained=False)
-# resnet18_model.fc = nn.Linear(resnet18_model.fc.in_features, 12)
-# resnet18_model.load_state_dict(torch.load('best_resnet18_model.pth'))
-# resnet18_model = resnet18_model.to(device)
-# resnet18_model.eval()  # Set model to evaluation mode
-
-
-# def process_image_oral(image_path):
-#     """
-#     Function to process and transform the image.
-#     """
-#     img = Image.open(image_path).convert('RGB')  # Ensure the image is in RGB mode
-#     img = oral_transform(img)  # Apply transformations
-#     img = img.unsqueeze(0)  # Add batch dimension
-#     return img.to(device)  # Send image to the appropriate device (GPU or CPU)
-
-
-# class SideBar_oral(BoxLayout):
-#     """
-#     Sidebar layout with buttons for navigation.
-#     """
-#     def __init__(self, app, **kwargs):
-#         super().__init__(**kwargs)
-#         self.orientation = 'vertical'
-#         self.size_hint_x = None
-#         self.width = '200dp'
-#         self.spacing = 20
-#         self.padding = 20
-#         Color(0.1, 0.14, 0.13)  # Set background color for sidebar
-
-#         # Add buttons to the sidebar for different screens
-#         self.add_widget(Button(text='Home', size_hint_y=None, height='50dp',
-#                                background_color=[0, 1, 1, 0.5], color=(1, 1, 1, 1),
-#                                on_press=lambda x: app.change_screen('home')))
-#         self.add_widget(Button(text='About', size_hint_y=None, height='50dp',
-#                                background_color=[0, 1, 1, 0.5], color=(1, 1, 1, 1),
-#                                on_press=lambda x: app.change_screen('about')))
-#         self.add_widget(Button(text='Contact', size_hint_y=None, height='50dp',
-#                                background_color=[0, 1, 1, 0.5], color=(1, 1, 1, 1),
-#                                on_press=lambda x: app.change_screen('contact')))
-
-
-# class FileManagerScreen_oral(Screen):
-#     """
-#     Screen to handle file selection, upload, and prediction for oral diseases.
-#     """
-#     def __init__(self, name=None, **kwargs):
-#         super().__init__(**kwargs)
-#         layout = BoxLayout(orientation='horizontal')
-
-#         # Sidebar
-#         self.side_bar = SideBar_oral(App.get_running_app())
-#         layout.add_widget(self.side_bar)
-
-#         # Content layout for file chooser and prediction button
-#         content_layout = BoxLayout(orientation='vertical', padding=20, spacing=20)
-#         self.name = name
-#         self.file_chooser = FileChooserIconView()
-#         self.file_chooser.size_hint = (1, 0.8)
-#         content_layout.add_widget(self.file_chooser)
-
-#         # Upload button to trigger prediction
-#         self.upload_button = Button(text="Upload and Predict", size_hint=(1, 0.1), background_color=[0, 1, 1, 0.5])
-#         self.upload_button.bind(on_press=self.upload_and_predict_oral)
-#         content_layout.add_widget(self.upload_button)
-
-#         # TextInput to display the prediction result
-#         self.result_box = TextInput(text="", readonly=True, size_hint=(1, 0.1))
-#         self.result_box.foreground_color = (1, 0, 0, 1)  # Set initial text color to red
-#         content_layout.add_widget(self.result_box)
-
-#         layout.add_widget(content_layout)
-#         self.add_widget(layout)
-
-#     def upload_and_predict_oral(self, instance):
-#         """
-#         Handles the file upload and prediction process.
-#         """
-#         selected_file = self.file_chooser.selection
-#         if selected_file:
-#             file_path = selected_file[0]
-#             try:
-#                 # Process the image and transform it
-#                 image = process_image_oral(file_path)  # Directly transform here and send to device
-
-#                 # Perform prediction using the model
-#                 with torch.no_grad():
-#                     outputs = resnet18_model(image)
-#                     _, predicted = torch.max(outputs, 1)  # Get the predicted class
-
-#                 # Map predicted index to class name and display the result
-#                 predicted_class = oral_disease_class_names[predicted.item()]
-#                 self.result_box.text = f"Predicted Oral Disease: {predicted_class}"
-
-#             except Exception as e:
-#                 self.result_box.text = f"Error: {str(e)}"
-#         else:
-#             self.result_box.text = "Please select a file first."
 
 
 
@@ -488,9 +367,6 @@ def parse_input(input_str):
 
 
 
-
-
-
         
 
 class CancerDetectionScreen_ML(Screen):
@@ -531,17 +407,17 @@ class CancerDetectionScreen_ML(Screen):
         self.le_lnh_location = OrdinalEncoder(categories=[['submandibular', 'neck', 'parotid', 'None']], handle_unknown='use_encoded_value', unknown_value=-1)
         self.le_lnh_location.fit([['submandibular'], ['neck'], ['parotid'], ['None']])  # Fit on lymph node location categories
 
-        self.le_lnh_side = OrdinalEncoder(categories=[['same as the lesion', 'Other side', 'Bilateral']], handle_unknown='use_encoded_value', unknown_value=-1)
-        self.le_lnh_side.fit([['same as the lesion'], ['Other side'], ['Bilateral']])  # Fit on lymph node side categories
+        self.le_lnh_side = OrdinalEncoder(categories=[['same as the lesion', 'Other side', 'Bilateral' , 'None']], handle_unknown='use_encoded_value', unknown_value=-1)
+        self.le_lnh_side.fit([['same as the lesion'], ['Other side'], ['Bilateral'], ['None']])  # Fit on lymph node side categories
 
-        self.le_lnh_texture = OrdinalEncoder(categories=[['hard', 'firm']], handle_unknown='use_encoded_value', unknown_value=-1)
-        self.le_lnh_texture.fit([['hard'], ['firm']])  # Fit on lymph node texture categories
+        self.le_lnh_texture = OrdinalEncoder(categories=[['hard', 'firm' , 'None']], handle_unknown='use_encoded_value', unknown_value=-1)
+        self.le_lnh_texture.fit([['hard'], ['firm'], ['None']])  # Fit on lymph node texture categories
 
-        self.le_lnh_tenderness = OrdinalEncoder(categories=[['hard', 'firm']], handle_unknown='use_encoded_value', unknown_value=-1)
-        self.le_lnh_tenderness.fit([['hard'], ['firm']])  # Fit on lymph node tenderness categories
+        self.le_lnh_tenderness = OrdinalEncoder(categories=[['hard', 'firm' , 'None']], handle_unknown='use_encoded_value', unknown_value=-1)
+        self.le_lnh_tenderness.fit([['hard'], ['firm'], ['None']])  # Fit on lymph node tenderness categories
 
-        self.le_lnh_mobility = OrdinalEncoder(categories=[['fixed', 'mobile']], handle_unknown='use_encoded_value', unknown_value=-1)
-        self.le_lnh_mobility.fit([['fixed'], ['mobile']])  # Fit on lymph node mobility categories
+        self.le_lnh_mobility = OrdinalEncoder(categories=[['fixed', 'mobile' , 'None']], handle_unknown='use_encoded_value', unknown_value=-1)
+        self.le_lnh_mobility.fit([['fixed'], ['mobile'], ['None']])  # Fit on lymph node mobility categories
 
         self.le_smoking = OrdinalEncoder(categories=[['pos', 'neg']], handle_unknown='use_encoded_value', unknown_value=-1)
         self.le_smoking.fit([['pos'], ['neg']])  # Fit on smoking categories
@@ -607,11 +483,11 @@ class CancerDetectionScreen_ML(Screen):
             'surface': TextInput(hint_text='Surface (Verrucous , Granuler , Ulcerated , Disfigured , papillomatosis , Disfigured , plaque , intact)', multiline=False, size_hint=(None, None), size=(1000, 50)),
             'texture': TextInput(hint_text='Texture (hard, soft, firm)', multiline=False, size_hint=(None, None), size=(1000, 50)),
             'lymphnode_involvement': TextInput(hint_text='Lymph Node Involvement (yes/no)', multiline=False, size_hint=(None, None), size=(1000, 50)),
-            'lymphnode_location': TextInput(hint_text='Lymph Node Location (e.g., submandibular, neck)', multiline=False, size_hint=(None, None), size=(1000, 50)),
-            'lymphnode_side': TextInput(hint_text='Lymph Node Side (same as the lesion, Other side, Bilateral)', multiline=False, size_hint=(None, None), size=(1000, 50)),
-            'lymphnode_texture': TextInput(hint_text='Lymph Node Texture (firm, hard)', multiline=False, size_hint=(None, None), size=(1000, 50)),
-            'lymphnode_tenderness': TextInput(hint_text='Lymph Node Tenderness (yes/no)', multiline=False, size_hint=(None, None), size=(1000, 50)),
-            'lymphnode_mobility': TextInput(hint_text='Lymph Node Mobility (fixed, mobile)', multiline=False, size_hint=(None, None), size=(1000, 50)),
+            'lymphnode_location': TextInput(hint_text='Lymph Node Location (e.g., submandibular, neck , None)', multiline=False, size_hint=(None, None), size=(1000, 50)),
+            'lymphnode_side': TextInput(hint_text='Lymph Node Side (same as the lesion, Other side, Bilateral , None)', multiline=False, size_hint=(None, None), size=(1000, 50)),
+            'lymphnode_texture': TextInput(hint_text='Lymph Node Texture (firm, hard , None)', multiline=False, size_hint=(None, None), size=(1000, 50)),
+            'lymphnode_tenderness': TextInput(hint_text='Lymph Node Tenderness (hard/firm/None)', multiline=False, size_hint=(None, None), size=(1000, 50)),
+            'lymphnode_mobility': TextInput(hint_text='Lymph Node Mobility (fixed, mobile , None)', multiline=False, size_hint=(None, None), size=(1000, 50)),
             'smoking': TextInput(hint_text='Smoking (pos/neg)', multiline=False, size_hint=(None, None), size=(1000, 50)),
             'alcohol': TextInput(hint_text='Alcohol (pos/neg)', multiline=False, size_hint=(None, None), size=(1000, 50)),
         }
