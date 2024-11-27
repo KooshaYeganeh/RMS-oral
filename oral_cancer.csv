@@ -4,14 +4,15 @@ age,gender,location,size,color,surface,texture,lymphnode_involvment,lymphnode_lo
 70,male,lateral border of tongue,8,white,papillomatosis,firm,yes,Neck,same as the lesion,hard,no,fixed,pos,neg,squamous cell carcinoma
 80,female,hard palate,9,red,Ulcerated,hard,yes,Neck,Other side,firm,no,mobile,neg,neg,squamous cell carcinoma
 55,male,floor of the mouth,9,white,Disfigured,hard,yes,Submandibular,Bilateral,hard,no,fixed,pos,pos,squamous cell carcinoma
-65,female,gingiva,10,red,Verrucous ,hard,no,_,_,_,_,_,neg,pos,squamous cell carcinoma
-75,male,lateral border of tongue,6,red-white,Granuler,firm,no,_,_,_,_,_,pos,pos,squamous cell carcinoma
-85,female,dorsal surface of tongue,4,red-white,papillomatosis,hard,no,_,_,_,_,_,neg,pos,squamous cell carcinoma
+65,female,gingiva,10,red,Verrucous ,hard,no,no,no,no,no,no,neg,pos,squamous cell carcinoma
+75,male,lateral border of tongue,6,red-white,Granuler,firm,no,no,no,no,no,no,pos,pos,squamous cell carcinoma
+85,female,dorsal surface of tongue,4,red-white,papillomatosis,hard,no,no,no,no,no,no,neg,pos,squamous cell carcinoma
 50,male,lateral border of tongue,8,red-white,Ulcerated,soft,yes,Submandibular,same as the lesion,firm,no,mobile,pos,neg,Pre-cancerous
-60,female,ventral surface of tongue,9,Pink,Ulcerated,firm,no,_,_,_,_,_,neg,pos,No cancer
-70,male,buccal mucosa,12,white-red,papillomatosis,soft,no,_,_,_,_,_,pos,neg,No cancer
-80,female,hard palate,16,white red,plaque,firm,no,_,_,_,_,_,neg,pos,Pre-cancerous
-55,male,floor of the mouth,2,pink,intact,soft,no,_,_,_,_,_,pos,neg,No cancer
+60,female,ventral surface of tongue,9,Pink,Ulcerated,firm,no,no,no,no,no,no,neg,pos,No cancer
+70,male,buccal mucosa,12,white-red,papillomatosis,soft,no,no,no,no,no,no,pos,neg,No cancer
+80,female,hard palate,16,white red,plaque,firm,no,no,no,no,no,no,neg,pos,Pre-cancerous
+55,male,floor of the mouth,2,pink,intact,soft,no,no,no,no,no,no,pos,neg,No cancer
 65,female,gingiva,2,pink,intact,firm,yes,Submandibular,Other side,firm,yes,mobile,neg,neg,No cancer
-75,male,lateral border of tongue,1,white,plaque,soft,no,_,_,_,_,_,pos,neg,Pre-cancerous
-85,female,dorsal surface of tongue,4,pink,intact,soft,no,_,_,_,_,_,neg,pos,No cancer
+75,male,lateral border of tongue,1,white,plaque,soft,no,no,no,no,no,no,pos,neg,Pre-cancerous
+85,female,dorsal surface of tongue,4,pink,intact,soft,no,no,no,no,no,no,neg,pos,No cancer
+
