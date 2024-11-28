@@ -139,8 +139,14 @@ To build a standalone executable for distribution:
 
    This will generate a standalone executable in the `dist` folder that can be distributed to users without requiring Python or additional dependencies.
 
+
 3. **Distribute the Executable**:
    Share the executable generated in the `dist` folder. Users can run the application without needing to install Python or other dependencies.
+
+
+
+**Application Running on 127.0.0.1:5005**
+
 
 ## Deep Learning & AI in Dental Healthcare
 
