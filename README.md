@@ -140,6 +140,16 @@ To build a standalone executable for distribution:
    This will generate a standalone executable in the `dist` folder that can be distributed to users without requiring Python or additional dependencies.
 
 
+2-3. **Create Executable For Linux**
+
+```
+
+pyinstaller --onefile --add-data "templates:templates" --add-data "static:static" --noconsole --hidden-import "sklearn.impute" --hidden-import "joblib" --hidden-import "sklearn.tree._tree" --hidden-import "skleran.ensemble._forest" -n rms-oral-linux app.py
+
+```
+
+
+
 3. **Distribute the Executable**:
    Share the executable generated in the `dist` folder. Users can run the application without needing to install Python or other dependencies.
 
