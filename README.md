@@ -143,8 +143,7 @@ To build a standalone executable for distribution:
 2-3. **Create Executable For Linux**
 
 ```
-
-pyinstaller --onefile --add-data "templates:templates" --add-data "static:static" --noconsole --hidden-import "sklearn.impute" --hidden-import "joblib" --hidden-import "sklearn.tree._tree" --hidden-import "skleran.ensemble._forest" -n rms-oral-linux app.py
+pyinstaller --onefile --add-data "templates:templates" --add-data "static:static" --noconsole --hidden-import "sklearn.impute" --hidden-import "joblib" --hidden-import "sklearn.tree._tree" --hidden-import "sklearn.ensemble._forest" --hidden-import "sklearn.ensemble" -n rms-oral-linux app.py
 
 ```
 
