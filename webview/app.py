@@ -611,7 +611,7 @@ def predict_tooth():
 
 @app.route("/about_us")
 def about_us():
-    return render_template("about_us.html")
+    return render_template("profile.html")
 
 
 @app.route("/contact_us")

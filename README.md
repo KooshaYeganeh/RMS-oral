@@ -5,11 +5,11 @@ This application is designed to assist with the diagnosis of oral and dental dis
 
 ### Version 1
 
-![rms-oral](./AppImage/1.png)
+![rms-oral](./screenshots/1.png)
 
 ### Version 2
 
-![rms-oral-v2](./AppImage/v2.png)
+![rms-oral-v2](./screenshots/v2.png)
 
 ## Table of Contents
 - [Features](#features)
