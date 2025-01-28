@@ -345,10 +345,10 @@ def oral_cancer_detection_with_ml_predict():
         input_df = pd.DataFrame(input_data)
 
         # Preprocessing: Handle categorical variables for encoding
-        cat_columns = ["gender", "location", "color", "surface", "texture", "lymphnode_involvment", 
-                       "lymphnode_location", "lymphnode_side", "lymphnode_texture", 
+        cat_columns = ["gender", "location", "color", "surface", "texture", "lymphnode_involvment",
+                       "lymphnode_location", "lymphnode_side", "lymphnode_texture",
                        "lymphnode_tenderness", "lymphnode_mobility", "smoking", "alcohol"]
-        
+
         # Label encoding for categorical variables (if applicable)
         for col in cat_columns:
             if col in input_df.columns and input_df[col].dtype == 'object':  # Only encode if categorical
@@ -394,76 +394,155 @@ def tooth_segmentation():
 
 
 
+#@app.route("/tooth_segmentation", methods=["POST"])
+#def tooth_decay_segments_post():
+#    try:
+#        # Get current date and time
+#        image_file = request.files.get("bitwing2")
+#
+#        if not image_file or image_file.filename == '':
+#            return("""
+#                <html><body style='background-color:black;'>
+#                    <center><h2 style='color:red;'>
+#                        !!! No Selected File !!!
+#                    <h2>
+#                    <h1>Please check the information sent from the form and then try again</h1>
+#                    <a href='/toothdecay'><button style='background-color: red; border: none;color: white;padding: 15px 32px;text-align: center;text-decoration: none;display: inline-block;font-size: 16px;'> Return  </button></a>
+#                    </h2></center>
+#                </body></html>""")
+#
+#        try:
+#            # Save file to two locations
+#            name = image_file.filename
+#            goal_path = os.path.join('uploads', name)
+#            image_file.save(goal_path)
+#        except Exception as e:
+#            return f"Error saving file: {str(e)}"
+#
+#        try:
+#            # Read and preprocess image
+#            image = skio.imread(goal_path)
+#            gray_image = color.rgb2gray(image)
+#
+#            # Preprocessing: Enhance image for better segmentation
+#            enhanced_image = filters.gaussian(gray_image, sigma=1.0)
+#
+#            # Segmentation: Thresholding and morphological operations
+#            thresh = filters.threshold_otsu(enhanced_image)
+#            binary_image = enhanced_image > thresh
+#
+#            # Remove small objects and perform morphological operations
+#            cleaned_image = morphology.remove_small_objects(binary_image, min_size=500)
+#            cleaned_image = morphology.remove_small_holes(cleaned_image, area_threshold=500)
+#
+#            # Label connected regions (individual teeth)
+#            labels = measure.label(cleaned_image)
+#
+#            # Feature extraction and analysis
+#            scaler = MinMaxScaler()
+#            regions_info = []
+#            for region in measure.regionprops(labels):
+#                area = region.area
+#                centroid = region.centroid
+#                bbox = region.bbox
+#                min_intensity = gray_image[bbox[0]:bbox[2], bbox[1]:bbox[3]].min()
+#                max_intensity = gray_image[bbox[0]:bbox[2], bbox[1]:bbox[3]].max()
+#                decay_info = max_intensity - min_intensity
+#
+#                regions_info.append({
+#                    'area': area,
+#                    'centroid': centroid,
+#                    'bounding_box': bbox,
+#                    'decay_info': decay_info
+#                })
+#
+#                # Optional: Visualize decay detection
+#                plt.contour(labels == region.label, colors='r')
+#
+#            # Normalize labels for visualization
+#            labels_normalized = (labels - labels.min()) / (labels.max() - labels.min()) * 255
+#            labels_normalized = labels_normalized.astype(np.uint8)
+#
+#            # Plot original and processed images side by side
+#            fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+#
+#            # Original Image
+#            axes[0].imshow(image)
+#            axes[0].set_title('Original Image')
+#            axes[0].axis('off')
+#
+#            # Processed Image with Segmentation
+#            axes[1].imshow(gray_image, cmap='gray')
+#            axes[1].imshow(labels, alpha=0.5, cmap='jet')
+#            axes[1].set_title('Processed Image')
+#            axes[1].axis('off')
+#
+#            # Save the plot
+#            temp_img_path = os.path.join('uploads', f'{image_file.filename}')
+#            plt.savefig(temp_img_path, bbox_inches='tight', pad_inches=0)
+#            plt.close()  # Close plot to free resources
+#
+#            # Send file
+#            return send_file(temp_img_path, mimetype='image/png')
+#
+#        except Exception as e:
+#            return f"""
+#                <html><body>
+#                    <center>
+#                        <h2 style='color:red;'>Error</h2>
+#                        <h1>An error occurred while processing the image. Please try again.</h1>
+#                    </center>
+#                    </body></html>"""
+#    except Exception as e:
+#        return render_template("500_error.html")
+
+
+
+
 @app.route("/tooth_segmentation", methods=["POST"])
-def tooth_decay_segments_post():
+def tooth_decay_detection():
     try:
-        # Get current date and time
+        # Get the uploaded image file
         image_file = request.files.get("bitwing2")
         
+        # Check if the file is present
         if not image_file or image_file.filename == '':
-            return("""
-                <html><body style='background-color:black;'>
-                    <center><h2 style='color:red;'>
-                        !!! No Selected File !!!
-                    <h2>
-                    <h1>Please check the information sent from the form and then try again</h1>
-                    <a href='/toothdecay'><button style='background-color: red; border: none;color: white;padding: 15px 32px;text-align: center;text-decoration: none;display: inline-block;font-size: 16px;'> Return  </button></a>
-                    </h2></center>
-                </body></html>""")
+            return render_template("error.html", message="No file selected. Please check the information sent from the form and try again.")
+
+        # Save the uploaded file
+        upload_path = os.path.join('uploads', image_file.filename)
+        image_file.save(upload_path)
 
         try:
-            # Save file to two locations
-            name = image_file.filename
-            goal_path = os.path.join('uploads', name)
-            image_file.save(goal_path)
-        except Exception as e:
-            return f"Error saving file: {str(e)}"
-
-        try:
-            # Read and preprocess image
-            image = skio.imread(goal_path)
-            gray_image = color.rgb2gray(image)
+            # Read and preprocess the image
+            image = skio.imread(upload_path)
+            gray_image = color.rgb2gray(image)  # Convert to grayscale
             
-            # Preprocessing: Enhance image for better segmentation
-            enhanced_image = filters.gaussian(gray_image, sigma=1.0)
+            # Enhance the image for better decay detection
+            enhanced_image = filters.gaussian(gray_image, sigma=1.0)  # Smoothing
             
-            # Segmentation: Thresholding and morphological operations
-            thresh = filters.threshold_otsu(enhanced_image)
-            binary_image = enhanced_image > thresh
+            # Detect decay regions using intensity thresholding
+            # Decay regions are typically darker than healthy tooth regions
+            decay_threshold = filters.threshold_otsu(enhanced_image)  # Automatic thresholding
+            decay_mask = enhanced_image < decay_threshold  # Regions darker than the threshold
             
-            # Remove small objects and perform morphological operations
-            cleaned_image = morphology.remove_small_objects(binary_image, min_size=500)
-            cleaned_image = morphology.remove_small_holes(cleaned_image, area_threshold=500)
+            # Remove small noise from the decay mask
+            decay_mask = morphology.remove_small_objects(decay_mask, min_size=100)
+            decay_mask = morphology.remove_small_holes(decay_mask, area_threshold=100)
             
-            # Label connected regions (individual teeth)
-            labels = measure.label(cleaned_image)
+            # Label the decay regions
+            labeled_decay = measure.label(decay_mask)
             
-            # Feature extraction and analysis
-            scaler = MinMaxScaler()
-            regions_info = []
-            for region in measure.regionprops(labels):
-                area = region.area
-                centroid = region.centroid
-                bbox = region.bbox
-                min_intensity = gray_image[bbox[0]:bbox[2], bbox[1]:bbox[3]].min()
-                max_intensity = gray_image[bbox[0]:bbox[2], bbox[1]:bbox[3]].max()
-                decay_info = max_intensity - min_intensity
-                
-                regions_info.append({
-                    'area': area,
-                    'centroid': centroid,
-                    'bounding_box': bbox,
-                    'decay_info': decay_info
+            # Analyze decay regions
+            decay_regions = []
+            for region in measure.regionprops(labeled_decay):
+                decay_regions.append({
+                    'area': region.area,
+                    'centroid': region.centroid,
+                    'bounding_box': region.bbox
                 })
 
-                # Optional: Visualize decay detection
-                plt.contour(labels == region.label, colors='r')
-
-            # Normalize labels for visualization
-            labels_normalized = (labels - labels.min()) / (labels.max() - labels.min()) * 255
-            labels_normalized = labels_normalized.astype(np.uint8)
-            
-            # Plot original and processed images side by side
+            # Overlay decay regions on the original image
             fig, axes = plt.subplots(1, 2, figsize=(12, 6))
             
             # Original Image
@@ -471,31 +550,25 @@ def tooth_decay_segments_post():
             axes[0].set_title('Original Image')
             axes[0].axis('off')
             
-            # Processed Image with Segmentation
-            axes[1].imshow(gray_image, cmap='gray')
-            axes[1].imshow(labels, alpha=0.5, cmap='jet')
-            axes[1].set_title('Processed Image')
+            # Highlight Decay Regions
+            axes[1].imshow(image)
+            axes[1].imshow(decay_mask, alpha=0.3, cmap='Reds')  # Overlay decay mask
+            axes[1].set_title('Decay Detection')
             axes[1].axis('off')
 
             # Save the plot
-            temp_img_path = os.path.join('uploads', f'{image_file.filename}')
-            plt.savefig(temp_img_path, bbox_inches='tight', pad_inches=0)
+            output_path = os.path.join('uploads', f'decay_{image_file.filename}')
+            plt.savefig(output_path, bbox_inches='tight', pad_inches=0)
             plt.close()  # Close plot to free resources
             
-            # Send file
-            return send_file(temp_img_path, mimetype='image/png')
+            # Send the processed image back to the user
+            return send_file(output_path, mimetype='image/png')
 
         except Exception as e:
-            return f"""
-                <html><body>
-                    <center>
-                        <h2 style='color:red;'>Error</h2>
-                        <h1>An error occurred while processing the image. Please try again.</h1>
-                    </center>
-                    </body></html>"""
+            return render_template("error.html", message=f"An error occurred while processing the image: {str(e)}")
+
     except Exception as e:
         return render_template("500_error.html")
-
 
 
 
@@ -509,25 +582,25 @@ decay_csv = 'decay.csv'
 def load_and_preprocess_tooth_data(decay_csv):
     if not os.path.exists(decay_csv):
         raise FileNotFoundError(f"The file {decay_csv} does not exist.")
-    
+
     data = pd.read_csv(decay_csv)
-    
+
     # Initialize LabelEncoders for categorical columns
     label_encoders = {}
     for column in ['Diet', 'Saliva_Flow', 'Fluoride_Exposure', 'Dental_History', 'Family_History', 'Socioeconomic']:
         le = LabelEncoder()
         data[column] = le.fit_transform(data[column])
         label_encoders[column] = le
-    
+
     # Encode the target variable
     data['decay'] = data['decay'].map({'Yes': 1, 'No': 0})
-    
+
     X = data.drop('decay', axis=1)
     y = data['decay']
-    
+
     scaler = StandardScaler()
     X = scaler.fit_transform(X)
-    
+
     return label_encoders, scaler, X, y
 
 # Load and preprocess data
@@ -544,7 +617,7 @@ knn_tooth.fit(X_tooth, y_tooth)  # Fit KNN classifier using all data
 def predict_tooth_get():
     return render_template("tooth_decay_detection.html")
 
-""" 
+"""
 This POST route processes form data, applies label encoding and scaling, and uses the trained model to predict the risk.
 It calculates the probabilities of both high and low risks, and renders the result.
 
@@ -565,7 +638,7 @@ def predict_tooth():
         socioeconomic = request.form['socioeconomic']
         dental_visits = int(request.form['dental_visits'])
         dental_xrays = int(request.form['dental_xrays'])
-        
+
         # Create a DataFrame with the input data
         input_data = pd.DataFrame({
             'Age': [age],
@@ -578,14 +651,14 @@ def predict_tooth():
             'Dental_Visits': [dental_visits],
             'Dental_X-rays': [dental_xrays]
         })
-        
+
         # Ensure categorical encoding matches what was used during training
         for column in ['Diet', 'Saliva_Flow', 'Fluoride_Exposure', 'Dental_History', 'Family_History', 'Socioeconomic']:
             input_data[column] = label_encoders_tooth[column].transform([input_data[column][0]])  # Transform using the same encoder
-        
+
         # Scale numerical features using the same scaler
         input_data_scaled = scaler_tooth.transform(input_data)
-        
+
         # Get prediction probabilities
         proba = knn_tooth.predict_proba(input_data_scaled)
         high_risk_proba = proba[0][1]  # Probability of high risk
@@ -601,7 +674,7 @@ def predict_tooth():
             high_risk_proba=high_risk_proba,
             low_risk_proba=low_risk_proba
         )
-    
+
     except Exception as e:
         return ({'error': str(e)})
 
