@@ -163,3 +163,53 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 create_non_repdata.py
+
+## 6. Update `.gitignore`
+
+Ensure large files are excluded:
+
+```gitignore
+# Large model files
+*.pth
+*.pt
+*.safetensors
+*.h5
+*.hdf5
+*.onnx
+*.pb
+
+# Model directories
+vit_oral_finetune_model/
+medsam_vit_b.pth
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment
+venv/
+env/
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# System
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+models/
+vit_oral_finetune_model
+models/medsam/
+models/vit_oral
+models/vit_oral_finetune_model
+models/medsam/*
+models/vit_oral/*
+models/vit_oral_finetune_model/*

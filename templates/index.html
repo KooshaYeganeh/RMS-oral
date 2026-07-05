@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RMS-ORAL: Oral Cancer Screening System</title>
+    
+    <!-- SF Pro Display Font or Modern Alternative -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap">
+
+    <style>
+        /* ============================
+           VISIONOS BASE SETTINGS
+           ============================ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-image: url("../static/simone-franchina-QCtYLYAosC8-unsplash.jpg");
+            background-position: center;
+            background-size: cover;
+            background-repeat: no-repeat;
+            color: rgba(255, 255, 255, 0.92);
+            min-height: 100vh;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            background-attachment: fixed;
+            padding-bottom: 60px;
+        }
+
+        .container {
+            max-width: 1140px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        /* ============================
+           GLASSMORPHISM ELEMENTS (VisionOS Card Style)
+           ============================ */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(30px) saturate(190%);
+            -webkit-backdrop-filter: blur(30px) saturate(190%);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 24px;
+            padding: 28px;
+            margin-bottom: 24px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3), 
+                        inset 0 1px 1px rgba(255, 255, 255, 0.1);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .glass-panel:hover {
+            background: rgba(255, 255, 255, 0.07);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4), 
+                        inset 0 1px 2px rgba(255, 255, 255, 0.2);
+        }
+
+        /* ============================
+           HEADER
+           ============================ */
+        .header {
+            text-align: center;
+            padding: 20px 0 40px 0;
+        }
+
+        .header h1 {
+            font-size: 3.2rem;
+            font-weight: 700;
+            letter-spacing: -1.5px;
+            background: linear-gradient(180deg, #ffffff 0%, rgba(255, 255, 255, 0.7) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 6px;
+        }
+
+        .header .subtitle {
+            color: rgba(255, 255, 255, 0.55);
+            font-size: 1.2rem;
+            font-weight: 400;
+            margin-bottom: 20px;
+        }
+
+        .badge-container {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .vision-badge {
+            background: rgba(255, 255, 255, 0.06);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            color: rgba(255, 255, 255, 0.85);
+            padding: 6px 16px;
+            border-radius: 99px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .vision-badge.status-ready {
+            background: rgba(48, 209, 88, 0.15);
+            color: #30d158;
+            border: 1px solid rgba(48, 209, 88, 0.25);
+            padding-left: 28px;
+            position: relative;
+        }
+
+        .vision-badge.status-ready::before {
+            content: '';
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 7px;
+            height: 7px;
+            background-color: #30d158;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #30d158;
+            animation: pulse-glow 2s infinite;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        /* ============================
+           UPLOAD CARD
+           ============================ */
+        .upload-card {
+            border: 1px dashed rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.02);
+            padding: 48px 32px;
+            text-align: center;
+        }
+
+        .upload-card .icon {
+            font-size: 3.5rem;
+            margin-bottom: 12px;
+            display: inline-block;
+            filter: drop-shadow(0 8px 16px rgba(0,0,0,0.2));
+        }
+
+        .upload-card h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 6px;
+        }
+
+        .upload-card p {
+            color: rgba(255, 255, 255, 0.45);
+            font-size: 0.95rem;
+            margin-bottom: 28px;
+        }
+
+        .upload-form {
+            display: flex;
+            gap: 14px;
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 760px;
+            margin: 0 auto;
+        }
+
+        /* Glass Form Fields */
+        .upload-form input[type="file"],
+        .upload-form input[type="text"] {
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            color: #fff;
+            padding: 14px 20px;
+            font-size: 0.95rem;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+
+        .upload-form input[type="file"] {
+            flex: 2;
+            min-width: 260px;
+            cursor: pointer;
+        }
+
+        .upload-form input[type="text"] {
+            flex: 1;
+            min-width: 180px;
+        }
+
+        .upload-form input[type="file"]:hover,
+        .upload-form input[type="text"]:hover,
+        .upload-form input[type="text"]:focus {
+            background: rgba(0, 0, 0, 0.35);
+            border-color: rgba(255, 255, 255, 0.25);
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(255,255,255,0.05);
+        }
+
+        /* Vision Action Button */
+        .vision-btn {
+            background: #ffffff;
+            color: #000000;
+            padding: 14px 32px;
+            border: none;
+            border-radius: 14px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            box-shadow: 0 4px 12px rgba(255, 255, 255, 0.15);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .vision-btn:hover {
+            transform: scale(1.03);
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 8px 20px rgba(255, 255, 255, 0.25);
+        }
+
+        .vision-btn:active {
+            transform: scale(0.98);
+        }
+
+        /* ============================
+           GRID ARCHITECTURE
+           ============================ */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 850px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ============================
+           COMPONENTS & INTERNALS
+           ============================ */
+        .card-title {
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.95);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            letter-spacing: -0.2px;
+        }
+
+        /* Spatial Container Sub-boxes */
+        .spatial-inset {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 16px;
+            padding: 18px 20px;
+            margin-top: 12px;
+        }
+
+        /* Left-border styling adapted for Glassmorphism */
+        .spatial-inset.border-left {
+            border-left: 4px solid #64748b;
+        }
+        .spatial-inset.danger { border-left-color: #ff453a; background: rgba(255, 69, 58, 0.05); }
+        .spatial-inset.warning { border-left-color: #ff9f0a; background: rgba(255, 159, 10, 0.05); }
+        .spatial-inset.success { border-left-color: #30d158; background: rgba(48, 209, 88, 0.05); }
+        .spatial-inset.purple { border-left-color: #bf5af2; background: rgba(191, 90, 242, 0.05); }
+
+        .spatial-inset p {
+            margin: 6px 0;
+            font-size: 0.95rem;
+        }
+
+        .spatial-inset .label {
+            color: rgba(255, 255, 255, 0.45);
+            font-weight: 400;
+        }
+
+        .spatial-inset .value {
+            color: rgba(255, 255, 255, 0.9);
+            font-weight: 500;
+            margin-left: 4px;
+        }
+
+        /* ============================
+           RISK MANAGEMENT PIECE
+           ============================ */
+        .risk-container {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+
+        .risk-badge {
+            padding: 10px 22px;
+            border-radius: 99px;
+            font-weight: 700;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            min-width: 120px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .risk-badge.low {
+            background: rgba(48, 209, 88, 0.15);
+            color: #30d158;
+            border: 1px solid rgba(48, 209, 88, 0.3);
+        }
+
+        .risk-badge.medium {
+            background: rgba(255, 159, 10, 0.15);
+            color: #ff9f0a;
+            border: 1px solid rgba(255, 159, 10, 0.3);
+        }
+
+        .risk-badge.high {
+            background: rgba(255, 69, 58, 0.15);
+            color: #ff453a;
+            border: 1px solid rgba(255, 69, 58, 0.3);
+            animation: pulse-glow 2s infinite;
+        }
+
+        .risk-bar-container {
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .risk-bar-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 8px;
+        }
+
+        .risk-bar {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 99px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        .risk-bar-fill {
+            height: 100%;
+            border-radius: 99px;
+            transition: width 1.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .risk-bar-fill.low { background: #30d158; box-shadow: 0 0 8px rgba(48, 209, 88, 0.5); }
+        .risk-bar-fill.medium { background: #ff9f0a; box-shadow: 0 0 8px rgba(255, 159, 10, 0.5); }
+        .risk-bar-fill.high { background: #ff453a; box-shadow: 0 0 8px rgba(255, 69, 58, 0.5); }
+
+        .risk-message {
+            color: rgba(255, 255, 255, 0.55);
+            font-size: 0.9rem;
+            margin-top: 10px;
+            line-height: 1.4;
+        }
+
+        /* ============================
+           LESIONS & LIST ITEMS
+           ============================ */
+        .lesion-item {
+            border-left: 3px solid #ff453a;
+        }
+
+        .lesion-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 6px;
+        }
+
+        .lesion-header .conf {
+            font-size: 0.85rem;
+            background: rgba(255, 255, 255, 0.06);
+            padding: 2px 10px;
+            border-radius: 6px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        /* Label Tags */
+        .label-tag {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 14px;
+            border-radius: 99px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin: 4px 6px 4px 0;
+            transition: all 0.2s ease;
+        }
+
+        .label-tag.active {
+            background: rgba(255, 255, 255, 0.9);
+            color: #000;
+        }
+
+        .label-tag.inactive {
+            background: rgba(255, 255, 255, 0.04);
+            color: rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+        }
+
+        /* Differential Item */
+        .diff-item {
+            border-left: 3px solid #bf5af2;
+        }
+        
+        .diff-header-row {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            margin-bottom: 4px;
+        }
+
+        .diff-item .condition {
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .diff-item .score {
+            font-weight: 600;
+            color: #bf5af2;
+        }
+
+        .diff-item .rec {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 0.85rem;
+            margin-top: 2px;
+        }
+
+        /* Tracking items */
+        .change {
+            font-weight: 700;
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.9rem;
+        }
+        .change.grown { background: rgba(255, 69, 58, 0.15); color: #ff453a; }
+        .change.shrunk { background: rgba(48, 209, 88, 0.15); color: #30d158; }
+        .change.stable { background: rgba(255, 159, 10, 0.15); color: #ff9f0a; }
+
+        /* Guideline item */
+        .guideline-item {
+            border-left: 3px solid #ff9f0a;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .guideline-top-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .severity {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 2px 8px;
+            border-radius: 6px;
+            text-transform: uppercase;
+        }
+
+        .severity.high { background: #ff453a; color: #fff; }
+        .severity.medium { background: #ff9f0a; color: #000; }
+
+        /* ============================
+           FEATURES GRID STRUCTURE
+           ============================ */
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .feature-item {
+            background: rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 14px 10px;
+            border-radius: 14px;
+            text-align: center;
+            transition: background 0.2s ease;
+        }
+
+        .feature-item:hover {
+            background: rgba(0, 0, 0, 0.25);
+        }
+
+        .feature-item .feature-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .feature-item .feature-label {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.4);
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        /* ============================
+           SECONDARY BUTTON ARCHITECTURE
+           ============================ */
+        .report-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .v-btn-secondary {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            color: #fff;
+        }
+
+        .v-btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        /* ============================
+           SPINNER / LOADING STATE
+           ============================ */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            width: 44px;
+            height: 44px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #ffffff;
+            border-radius: 50%;
+            animation: spin 1s cubic-bezier(0.6, 0.2, 0.2, 0.8) infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* ============================
+           VISION SYSTEM MODAL PLATFORM
+           ============================ */
+        .report-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(40px);
+            -webkit-backdrop-filter: blur(40px);
+            z-index: 1000;
+            padding: 40px 20px;
+            overflow-y: auto;
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        .report-modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .report-modal-content {
+            width: 100%;
+            max-width: 800px;
+            background: rgba(30, 30, 35, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 28px;
+            padding: 40px;
+            color: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 50px 100px rgba(0,0,0,0.6);
+        }
+
+        .report-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+        }
+
+        .report-modal-header h2 {
+            font-size: 1.6rem;
+            font-weight: 600;
+        }
+
+        .report-modal-close {
+            background: rgba(255, 255, 255, 0.08);
+            border: none;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            font-size: 1.1rem;
+            cursor: pointer;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .report-modal-close:hover {
+            background: rgba(255, 69, 58, 0.2);
+            color: #ff453a;
+        }
+
+        /* ERROR DISPLAY */
+        .error-box {
+            background: rgba(255, 69, 58, 0.15);
+            padding: 16px 20px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 69, 58, 0.25);
+            color: #ff453a;
+            margin-bottom: 24px;
+            font-size: 0.95rem;
+        }
+
+        /* DEBUG STYLING */
+        .debug-data {
+            display: none;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 20px;
+            border-radius: 16px;
+            margin-top: 16px;
+            font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.6);
+            border: 1px solid rgba(255,255,255,0.05);
+            max-height: 350px;
+            overflow-y: auto;
+        }
+        .debug-data.active { display: block; }
+
+        /* FOOTER DISCLOSURES */
+        .footer {
+            text-align: center;
+            margin-top: 60px;
+            padding-top: 24px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .footer .disclaimer {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.35);
+            max-width: 700px;
+            margin: 0 auto;
+            line-height: 1.5;
+        }
+
+        /* ANIMATION TIMINGS */
+        .results-container {
+            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; } to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- ======================== HEADER ======================== -->
+    <header class="header">
+        <h1>RMS-ORAL</h1>
+        <p class="subtitle">Research-Grade Oral Cancer Screening System</p>
+        <div class="badge-container">
+            <span class="vision-badge">🔬 v3.0 Research</span>
+            <span class="vision-badge status-ready">System Ready</span>
+            <span class="vision-badge">🧠 Multi-Model Ensemble</span>
+        </div>
+    </header>
+
+    <!-- ======================== UPLOAD ======================== -->
+    <div class="glass-panel upload-card">
+        <div class="icon">📸</div>
+        <h2>Upload Oral Image for Analysis</h2>
+        <p>Supports JPG, PNG, BMP — Max 10MB</p>
+
+        <form class="upload-form" method="POST" enctype="multipart/form-data" id="uploadForm">
+            <input type="file" name="image" accept="image/*" required>
+            <input type="text" name="patient_id" placeholder="Patient ID (optional)">
+            <button type="submit" class="vision-btn" id="analyzeBtn">🔬 Analyze</button>
+        </form>
+    </div>
+
+    <!-- ======================== LOADING ======================== -->
+    <div class="loading" id="loadingIndicator">
+        <div class="spinner"></div>
+        <p style="color: rgba(255,255,255,0.6); font-size: 0.95rem;">🔄 Analyzing image structure...<br>
+        <span style="font-size: 0.8rem; color: rgba(255,255,255,0.4);">Running spatial multi-model evaluation</span></p>
+    </div>
+
+    <!-- ======================== ERROR ======================== -->
+    {% if error %}
+    <div class="error-box">
+        <strong>⚠️ Error:</strong> {{ error }}
+    </div>
+    {% endif %}
+
+    <!-- ======================== RESULTS ======================== -->
+    {% if result %}
+    <div class="results-container">
+
+        <!-- ===== RISK ASSESSMENT ===== -->
+        <div class="glass-panel">
+            <div class="card-title">📊 Risk Assessment</div>
+            <div class="risk-container">
+                <span class="risk-badge {{ result.risk_level|default('low') }}">
+                    {{ (result.risk_level|default('low')) | upper }} RISK
+                </span>
+                <div class="risk-bar-container">
+                    <div class="risk-bar-label">
+                        <span>Risk Target Metric</span>
+                        <span><strong>{{ "%.2f"|format(result.risk_score|default(0)) }}</strong></span>
+                    </div>
+                    <div class="risk-bar">
+                        <div class="risk-bar-fill {{ result.risk_level|default('low') }}" 
+                             style="width: {{ (result.risk_score|default(0)) * 100 }}%;">
+                        </div>
+                    </div>
+                    <div class="risk-message">
+                        {{ result.risk_message|default('Risk assessment completed.') }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TWO COLUMN BALANCED DETAILS -->
+        <div class="grid-2">
+            
+            <!-- COLUMN 1: INTERPRETATIONS -->
+            <div>
+                <!-- CLINICAL EXPLANATION -->
+                {% if result.explanation %}
+                <div class="glass-panel">
+                    <div class="card-title">🧠 Clinical Explanation</div>
+                    <div class="spatial-inset border-left purple">
+                        <p>{{ result.explanation }}</p>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- CLINICAL TERMS -->
+                <div class="glass-panel">
+                    <div class="card-title">🏥 Core Metrics</div>
+                    <div class="spatial-inset border-left">
+                        <p><span class="label">Detected Elements:</span><span class="value">{{ result.clinical_terms if result.clinical_terms else 'No pathology found' }}</span></p>
+                        <p style="margin-top: 10px;"><span class="label">Lesion Groups:</span><span class="value">{{ result.lesion_count|default(0) }}</span></p>
+                        <p><span class="label">Model Variance:</span><span class="value">{{ "%.2f"|format(result.uncertainty|default(0)) }}</span></p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- COLUMN 2: TASKS & ACTIONS -->
+            <div>
+                <!-- RECOMMENDATION -->
+                {% if result.recommendation %}
+                <div class="glass-panel">
+                    <div class="card-title">💡 Clinical Recommendation</div>
+                    <div class="spatial-inset border-left {% if 'URGENT' in result.recommendation or 'IMMEDIATE' in result.recommendation %}danger{% elif 'MONITOR' in result.recommendation %}warning{% else %}success{% endif %}">
+                        <p style="font-weight: 500;">{{ result.recommendation }}</p>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- MULTI-LABELS -->
+                {% if result.multi_labels %}
+                <div class="glass-panel">
+                    <div class="card-title">🏷️ Characteristics Matrix</div>
+                    <div style="margin-top: 8px;">
+                        {% for label, active in result.multi_labels.items() %}
+                        <span class="label-tag {{ 'active' if active else 'inactive' }}">
+                            {{ label|replace('_', ' ')|title }} {{ '✓' if active else '✕' }}
+                        </span>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- ===== DETECTED LESIONS OVERVIEW ===== -->
+        {% if result.lesions %}
+        <div class="glass-panel">
+            <div class="card-title">🔴 Spatial Delineated Lesions</div>
+            {% for lesion in result.lesions %}
+            <div class="spatial-inset border-left lesion-item" style="margin-bottom: 12px;">
+                <div class="lesion-header">
+                    <span><strong>Lesion Unit #{{ loop.index }}</strong></span>
+                    <span class="conf">Confidence Map: {{ "%.3f"|format(lesion.confidence|default(0)) }}</span>
+                </div>
+                <p style="font-size: 0.9rem; color: rgba(255,255,255,0.5);">
+                    Resolution Footprint: {{ lesion.area|default(0) }} px² &bull; Bounding Box: [{{ lesion.bbox|join(', ') if lesion.bbox else 'N/A' }}]
+                </p>
+                
+                {% if lesion.features %}
+                <div style="margin-top: 10px; display: flex; gap: 16px; flex-wrap: wrap; font-size: 0.8rem; color: rgba(255,255,255,0.5);">
+                    {% if lesion.features.circularity is defined %}
+                    <span>🔄 Circularity: <strong>{{ "%.2f"|format(lesion.features.circularity) }}</strong></span>
+                    {% endif %}
+                    {% if lesion.features.white_ratio is defined %}
+                    <span>⬜ White Ratio: <strong>{{ "%.2f"|format(lesion.features.white_ratio) }}</strong></span>
+                    {% endif %}
+                    {% if lesion.features.solidity is defined %}
+                    <span>📐 Solidity: <strong>{{ "%.2f"|format(lesion.features.solidity) }}</strong></span>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- ===== DIAGNOSTIC SEPARATION AND DIFFERENTIAL ===== -->
+        {% if result.differential %}
+        <div class="glass-panel">
+            <div class="card-title">🩺 Differential Diagnostics Grid</div>
+            {% for item in result.differential %}
+            <div class="spatial-inset border-left diff-item">
+                <div class="diff-header-row">
+                    <span class="condition">{{ item.condition|replace('_', ' ')|title }}</span>
+                    <span class="score">{{ "%.0f"|format((item.score|default(0)) * 100) }}% Correlation</span>
+                </div>
+                <div class="rec">💡 {{ item.recommendation|default('') }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- ===== GUIDELINES ===== -->
+        {% if result.guidelines %}
+        <div class="glass-panel">
+            <div class="card-title">📋 Protocol Guidelines</div>
+            {% for item in result.guidelines %}
+            <div class="spatial-inset border-left guideline-item">
+                <div class="guideline-top-meta">
+                    <span style="font-weight: 500;">{{ item.message|default('') }}</span>
+                    <span class="severity {{ item.severity|default('medium') }}">{{ item.severity|default('medium') }}</span>
+                </div>
+                <span style="color: rgba(255,255,255,0.4); font-size: 0.85rem;">Action Requirement: {{ item.action|default('') }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- ===== EXTRACTION PARAMS ===== -->
+        {% if result.detailed and result.detailed.features %}
+        <div class="glass-panel">
+            <div class="card-title">📐 Morphological Extracted Features</div>
+            <div class="features-grid">
+                {% for key, value in result.detailed.features.items() %}
+                    {% if key not in ['lesion_count', 'irregular_count'] %}
+                    <div class="feature-item">
+                        <div class="feature-value">{{ "%.3f"|format(value) if value is number else value }}</div>
+                        <div class="feature-label">{{ key|replace('_', ' ')|title }}</div>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ===== TEMPORAL TRACKING ===== -->
+        {% if result.detailed and result.detailed.tracking %}
+        <div class="glass-panel">
+            <div class="card-title">📈 Longitudinal Lesion Tracking</div>
+            {% if result.detailed.tracking is mapping %}
+                <div class="spatial-inset">
+                    <p><span class="label">Prior Reference Area:</span><span class="value">{{ result.detailed.tracking.previous_area|default(0) }} px²</span></p>
+                    <p><span class="label">Current Surface Area:</span><span class="value">{{ result.detailed.tracking.current_area|default(0) }} px²</span></p>
+                    <p style="margin: 12px 0 6px 0;">
+                        <span class="label">Volumetric Delta:</span>
+                        <span class="change {% if result.detailed.tracking.has_grown|default(false) %}grown{% else %}shrunk{% endif %}">
+                            {% if result.detailed.tracking.size_percentage is defined and result.detailed.tracking.size_percentage is number %}
+                                {{ "%.1f"|format(result.detailed.tracking.size_percentage) }}%
+                            {% else %}0.0%{% endif %}
+                            {% if result.detailed.tracking.has_grown|default(false) %}↑ Growth{% else %}↓ Regression{% endif %}
+                        </span>
+                    </p>
+                    <p style="font-size: 0.8rem; color: rgba(255,255,255,0.3); margin-top: 8px;">
+                        Timeline Range: {{ result.detailed.tracking.previous_date|default('N/A') }} &rarr; {{ result.detailed.tracking.current_date|default('N/A') }}
+                    </p>
+                </div>
+            {% else %}
+                <div class="spatial-inset">
+                    <p style="color: rgba(255,255,255,0.6);">{{ result.detailed.tracking }}</p>
+                </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- ===== ACTIONS PANEL ===== -->
+        {% if result.report %}
+        <div class="glass-panel">
+            <div class="card-title">📄 Output Diagnostics</div>
+            <div class="report-actions">
+                <button class="vision-btn" onclick="openReportModal()">📋 View Extended Document</button>
+                <button class="vision-btn v-btn-secondary" onclick="toggleDebug()">🔍 Inspect Raw Vectors</button>
+            </div>
+            <div class="debug-data" id="debugSection">
+                <pre>{{ result|tojson(indent=2) }}</pre>
+            </div>
+        </div>
+
+        <!-- ===== MODAL OVERLAY ===== -->
+        <div class="report-modal" id="reportModal">
+            <div class="report-modal-content">
+                <div class="report-modal-header">
+                    <h2>📋 Comprehensive Diagnostic Record</h2>
+                    <button class="report-modal-close" onclick="closeReportModal()">✕</button>
+                </div>
+                <div id="reportContent" style="line-height: 1.6; color: rgba(255,255,255,0.85);">
+                    {{ result.report|safe }}
+                </div>
+                <div style="margin-top: 32px; text-align: right;">
+                    <button class="vision-btn v-btn-secondary" onclick="closeReportModal()">Dismiss Window</button>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+    {% endif %}
+
+    <!-- ======================== FOOTER ======================== -->
+    <footer class="footer">
+        <p class="disclaimer">
+            <strong>Research System Validation Disclosure:</strong> This computation system is certified for diagnostic framework environments and research pipelines. All evaluation metrics are subject to verification parameters.
+        </p>
+    </footer>
+
+</div>
+
+<!-- UI ACTION INTERACTION SCRIPTS -->
+<script>
+    const form = document.getElementById('uploadForm');
+    if(form) {
+        form.addEventListener('submit', function() {
+            document.getElementById('loadingIndicator').classList.add('active');
+        });
+    }
+
+    function openReportModal() {
+        document.getElementById('reportModal').classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeReportModal() {
+        document.getElementById('reportModal').classList.remove('active');
+        document.body.style.overflow = 'auto';
+    }
+
+    function toggleDebug() {
+        const debugBox = document.getElementById('debugSection');
+        if(debugBox) debugBox.classList.toggle('active');
+    }
+</script>
+</body>
+</html>
