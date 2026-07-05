@@ -205,11 +205,12 @@ Thumbs.db
 
 # Logs
 *.log
-models/
-vit_oral_finetune_model
+# ========== Large ML Models ==========
+medsam_vit_b.pth
+best.pt
+
+# model folders (weights only, not code)
 models/medsam/
-models/vit_oral
-models/vit_oral_finetune_model
-models/medsam/*
-models/vit_oral/*
-models/vit_oral_finetune_model/*
+models/vit_oral/
+models/vit_oral_finetune_model/
+vit_oral_finetune_model/
