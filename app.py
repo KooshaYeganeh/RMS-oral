@@ -11,6 +11,10 @@ from PIL import Image
 import json
 from datetime import datetime
 import warnings
+from ultralytics import YOLO
+
+from huggingface_hub import hf_hub_download
+
 warnings.filterwarnings('ignore')
 
 # Add current directory to path
@@ -25,10 +29,58 @@ app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = Config.UPLOAD_FOLDER
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
-# Initialize components
+# Initialize core clinical components
 quality_assessor = ImageQualityAssessor()
 safety_checker = SafetyChecker()
 decision_engine = ClinicalDecisionEngine()
+
+
+# ==========================================
+# 🦷 FIXED DENTAL YOLO DETECTOR & LOGIC
+# ==========================================
+class DentalYOLODetector:
+    def __init__(self):
+        print("Downloading and loading Dental YOLO from Hugging Face Hub...")
+        
+        # Safe weight pulling from HF Hub
+        model_path = hf_hub_download(
+            repo_id="liodon-ai/dental-panoramic-detector",
+            filename="best.pt"
+        )
+        
+        # Proper ultralytics instantiation 
+        self.model = YOLO(model_path)
+        print("Dental YOLO loaded successfully.")
+
+    def detect(self, image):
+        """
+        Runs prediction and parses output into a clean list of dictionaries
+        image: PIL.Image
+        """
+        img = np.array(image)
+        results = self.model.predict(source=img, verbose=False)
+        
+        detections = []
+        r = results[0]
+
+        if r.boxes is not None:
+            names = self.model.names
+            for box in r.boxes:
+                cls = int(box.cls)
+                conf = float(box.conf)
+                bbox = box.xyxy.cpu().numpy()[0].tolist()
+
+                detections.append({
+                    "class_id": cls,
+                    "class_name": names[cls],
+                    "confidence": conf,
+                    "bbox": bbox
+                })
+        return detections
+
+
+# Single instance initialization
+yolo_detector = DentalYOLODetector()
 
 
 # =========================
@@ -64,6 +116,9 @@ def safe_jsonify(data):
         return jsonify({"error": f"Serialization error: {str(e)}", "data": str(data)})
 
 
+# =========================
+# 🛣️ ROUTES & APIS
+# =========================
 @app.route("/", methods=["GET", "POST"])
 def index():
     """Main interface"""
@@ -84,17 +139,20 @@ def index():
             # Get patient ID
             patient_id = request.form.get("patient_id")
             
-            # Analyze
+            # Analyze via core engine
             analysis = decision_engine.analyze(image, patient_id)
+
+            # Fixed: Use the instantiated yolo_detector class method
+            detections = yolo_detector.detect(image)
+
+            analysis["detections"] = detections
+            analysis["detected_objects"] = len(detections)
             
             if analysis.get('success', False):
-                # Convert all data to JSON serializable
                 safe_analysis = convert_to_serializable(analysis)
                 
-                # Handle tracking safely
                 tracking = safe_analysis.get('tracking')
                 if tracking and isinstance(tracking, dict):
-                    # Ensure all values are numbers
                     for key in ['size_percentage', 'size_change', 'previous_area', 'current_area']:
                         if key in tracking and tracking[key] is not None:
                             try:
@@ -170,12 +228,40 @@ def api_track(patient_id):
     })
 
 
+@app.route("/opg-detection", methods=["GET", "POST"])
+def opg_detection():
+    result = None
+    error = None
+
+    try:
+        if request.method == "POST":
+            file = request.files.get("image")
+            if not file:
+                error = "No image uploaded"
+                return render_template("opg_detection.html", error=error)
+
+            image = Image.open(file).convert("RGB")
+
+            # Fixed: Properly structured object instance execution mapping
+            detections = yolo_detector.detect(image)
+
+            result = {
+                "count": len(detections),
+                "detections": detections
+            }
+
+    except Exception as e:
+        error = str(e)
+
+    return render_template("opg_detection.html", result=result, error=error)
+
+
 if __name__ == "__main__":
     print("=" * 60)
     print("🦷 RMS-ORAL: Clinical Decision System")
     print("=" * 60)
-    print(f"📱 Running on: http://0.0.0.0:5000")
+    print(f"📱 Running on: http://0.0.0.0:5005")
     print(f"🔧 Device: {Config.DEVICE}")
     print(f"📊 Status: Production Ready")
     print("=" * 60)
-    app.run(host="0.0.0.0", port=5005, debug=False)
+    app.run(host="0.0.0.0", port=5005, debug=True)

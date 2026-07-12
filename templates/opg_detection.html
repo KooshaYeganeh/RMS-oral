@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RMS-ORAL - OPG Detection</title>
+    <!-- Tailwind CSS v4 -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        /* visionOS Glassmorphism Base Styles */
+        body{
+                        background-image: url("../static/simone-franchina-QCtYLYAosC8-unsplash.jpg");
+            background-position: center;
+            background-repeat: no-repeat;
+            background-size: cover
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(25px) saturate(190%);
+            -webkit-backdrop-filter: blur(25px) saturate(190%);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 
+                        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+        }
+        
+        .glass-nav {
+            background: rgba(20, 20, 25, 0.35);
+            backdrop-filter: blur(30px);
+            -webkit-backdrop-filter: blur(30px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        /* Hover lighting effects native to visionOS */
+        .spatial-hover {
+            transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .spatial-hover:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.05);
+            transform: scale(1.005);
+        }
+
+        .canvas-container {
+            position: relative;
+            display: inline-block;
+            max-width: 100%;
+        }
+        #detectionCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        /* Smooth system scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 999px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-[#0b0c10] text-slate-200 min-h-screen font-sans relative antialiased overflow-x-hidden">
+
+    <!-- Ambient Dynamic Background Glows -->
+    <div class="fixed top-[-20%] left-[-10%] w-[50vw] h-[50vw] bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none"></div>
+    <div class="fixed bottom-[-10%] right-[-10%] w-[40vw] h-[40vw] bg-purple-500/10 rounded-full blur-[120px] pointer-events-none"></div>
+
+    <!-- Top Navigation Bar (Spatial Island Style) -->
+    <nav class="glass-nav sticky top-0 z-50 px-8 py-4 flex justify-between items-center mx-auto my-4 max-w-7xl rounded-2xl shadow-lg">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10 shadow-inner">
+                <span class="text-xl">🦷</span>
+            </div>
+            <div>
+                <h1 class="text-lg font-bold tracking-tight text-white bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">RMS-ORAL</h1>
+                <p class="text-[10px] uppercase tracking-widest text-slate-400 font-semibold">OPG Module</p>
+            </div>
+        </div>
+        <div class="flex p-1 bg-white/5 border border-white/5 rounded-xl">
+            <a href="/" class="px-4 py-2 text-xs font-medium rounded-lg text-slate-400 hover:text-white transition-colors duration-200">Main Analysis</a>
+            <a href="/opg-detection" class="px-4 py-2 text-xs font-semibold rounded-lg bg-white/10 text-white shadow border border-white/10 transition-all duration-200">OPG Detection</a>
+        </div>
+    </nav>
+
+    <!-- Main Content Grid -->
+    <main class="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 relative z-10">
+        
+        <!-- Left Column: Upload Form -->
+        <section class="lg:col-span-4 glass-panel rounded-2xl p-6 h-fit spatial-hover">
+            <h2 class="text-md font-semibold text-white tracking-wide mb-4 flex items-center space-x-2">
+                <span>📥</span> <span>Panoramic X-Ray Upload</span>
+            </h2>
+            
+            {% if error %}
+            <div class="mb-4 p-4 bg-red-500/10 border border-red-500/20 text-red-300 text-xs rounded-xl backdrop-blur-md">
+                <span class="font-bold">System Alert:</span> {{ error }}
+            </div>
+            {% endif %}
+
+            <form action="/opg-detection" method="POST" enctype="multipart/form-data" class="space-y-4">
+                <div class="border border-dashed border-white/10 bg-white/[0.01] hover:bg-white/[0.03] hover:border-white/20 rounded-xl p-8 text-center transition-all duration-300 cursor-pointer relative group">
+                    <input type="file" name="image" id="imageInput" accept="image/*" required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                    <div id="uploadPrompt" class="space-y-3">
+                        <div class="w-12 h-12 mx-auto rounded-full bg-white/5 flex items-center justify-center border border-white/10 group-hover:scale-110 transition-transform duration-300">
+                            <span class="text-xl">📁</span>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-slate-200 transition">Select Panoramic Image</p>
+                            <p class="text-xs text-slate-500 mt-1">Drag and drop or browse local files</p>
+                        </div>
+                    </div>
+                    <!-- Live preview before upload -->
+                    <img id="localPreview" class="hidden max-h-48 mx-auto rounded-lg border border-white/10 shadow-2xl" alt="Preview" />
+                </div>
+
+                <button type="submit" class="w-full bg-white text-slate-950 font-semibold py-3 px-4 rounded-xl shadow-lg shadow-white/5 hover:bg-slate-100 active:scale-[0.98] transition-all duration-200 flex justify-center items-center space-x-2 text-sm cursor-pointer">
+                    <span>⚡</span>
+                    <span>Analyze Spatial Space</span>
+                </button>
+            </form>
+        </section>
+
+        <!-- Right Column: Results & Interactive Visualization -->
+        <section class="lg:col-span-8 space-y-6">
+            {% if result %}
+                <!-- Summary Card -->
+                <div class="glass-panel rounded-2xl p-6 flex justify-between items-center spatial-hover">
+                    <div>
+                        <h2 class="text-lg font-bold text-white tracking-wide">Analysis Matrix Complete</h2>
+                        <p class="text-xs text-slate-400">Object localization pipeline mapped successfully.</p>
+                    </div>
+                    <div class="bg-white/5 px-5 py-2.5 rounded-xl border border-white/5 text-center shadow-inner">
+                        <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-widest mb-0.5">Found</span>
+                        <span class="text-2xl font-black text-white">{{ result.count }}</span>
+                    </div>
+                </div>
+
+                <!-- Visualizer Block -->
+                <div class="glass-panel rounded-2xl p-6 flex flex-col items-center">
+                    <div class="w-full flex justify-between items-center mb-4">
+                        <h3 class="text-sm font-semibold text-slate-300 tracking-wide">Spatial Visualization Canvas</h3>
+                        <span class="text-[11px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-md font-mono">YOLO Layer Active</span>
+                    </div>
+                    <div class="canvas-container rounded-xl overflow-hidden border border-white/10 bg-black/20 p-2">
+                        <img id="targetImage" src="#" class="rounded-lg max-h-[500px] object-contain" alt="Analyzed OPG">
+                        <canvas id="detectionCanvas"></canvas>
+                    </div>
+                </div>
+
+                <!-- Tabular Breakdown -->
+                <div class="glass-panel rounded-2xl overflow-hidden shadow-2xl border border-white/8">
+                    <div class="px-6 py-4 bg-white/[0.02] border-b border-white/5 flex items-center justify-between">
+                        <h3 class="text-sm font-semibold text-slate-200 tracking-wide">Detections Registry</h3>
+                        <span class="text-xs font-mono text-slate-500">v8_panoramic_weights</span>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-white/[0.01] text-[11px] font-bold uppercase text-slate-400 tracking-widest border-b border-white/5">
+                                    <th class="px-6 py-3.5">Index</th>
+                                    <th class="px-6 py-3.5">Classification</th>
+                                    <th class="px-6 py-3.5">Confidence Metrics</th>
+                                    <th class="px-6 py-3.5 text-right">Mapping Coordinates</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-white/5 text-xs">
+                                {% for det in result.detections %}
+                                <tr class="hover:bg-white/[0.02] transition-colors duration-150">
+                                    <td class="px-6 py-4 font-mono font-bold text-white/40">#{{ loop.index }}</td>
+                                    <td class="px-6 py-4 font-semibold text-white text-sm">{{ det.class_name }}</td>
+                                    <td class="px-6 py-4">
+                                        <div class="flex items-center space-x-3">
+                                            <span class="font-mono text-xs font-bold text-slate-200">{{ (det.confidence * 100)|round(1) }}%</span>
+                                            <div class="w-24 bg-white/5 border border-white/5 rounded-full h-1.5 overflow-hidden p-[1px]">
+                                                <div class="bg-gradient-to-r from-indigo-400 to-purple-400 h-full rounded-full" style="width: {{ det.confidence * 100 }}%"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 font-mono text-right text-slate-400">
+                                        [{{ det.bbox[0]|round(0) }}, {{ det.bbox[1]|round(0) }}, {{ det.bbox[2]|round(0) }}, {{ det.bbox[3]|round(0) }}]
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            {% else %}
+                <!-- Empty State -->
+                <div class="border border-dashed border-white/10 bg-white/[0.01] rounded-2xl p-16 text-center text-slate-500 shadow-inner flex flex-col items-center justify-center space-y-4">
+                    <div class="w-16 h-16 rounded-full bg-white/[0.02] border border-white/5 flex items-center justify-center text-2xl">
+                        📊
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-slate-300">Awaiting Spatial Input Matrix</p>
+                        <p class="text-xs text-slate-500 mt-1">Uploaded OPG coordinates will compute across coordinates automatically.</p>
+                    </div>
+                </div>
+            {% endif %}
+        </section>
+    </main>
+
+    <!-- Script Handling Canvas Overlay Rendering & Previews -->
+    <script>
+        const imageInput = document.getElementById('imageInput');
+        const localPreview = document.getElementById('localPreview');
+        const uploadPrompt = document.getElementById('uploadPrompt');
+
+        if (imageInput) {
+            imageInput.addEventListener('change', function() {
+                const file = this.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        localPreview.src = e.target.result;
+                        localPreview.classList.remove('hidden');
+                        uploadPrompt.classList.add('hidden');
+                        localStorage.setItem('cachedOpgImage', e.target.result);
+                    }
+                    reader.readAsDataURL(file);
+                }
+            });
+        }
+
+        {% if result %}
+            const rawDetections = {{ result.detections | tojson }};
+            const targetImg = document.getElementById('targetImage');
+            const canvas = document.getElementById('detectionCanvas');
+            const ctx = canvas.getContext('2d');
+
+            const cachedImage = localStorage.getItem('cachedOpgImage');
+            if (cachedImage) {
+                targetImg.src = cachedImage;
+            }
+
+            function drawBoxes() {
+                canvas.width = targetImg.clientWidth;
+                canvas.height = targetImg.clientHeight;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                const scaleX = canvas.width / targetImg.naturalWidth;
+                const scaleY = canvas.height / targetImg.naturalHeight;
+
+                rawDetections.forEach((det, index) => {
+                    const [x1, y1, x2, y2] = det.bbox;
+                    
+                    const rx = x1 * scaleX;
+                    const ry = y1 * scaleY;
+                    const rw = (x2 - x1) * scaleX;
+                    const rh = (y2 - y1) * scaleY;
+
+                    // Apple Style Fine-Lined High-Contrast Overlays
+                    ctx.strokeStyle = '#a5b4fc'; // Indigo-200 neon line
+                    ctx.lineWidth = 1.5;
+                    ctx.shadowBlur = 6;
+                    ctx.shadowColor = 'rgba(165, 180, 252, 0.4)';
+                    ctx.strokeRect(rx, ry, rw, rh);
+                    
+                    // Reset shadow for text drawing
+                    ctx.shadowBlur = 0;
+
+                    // Minimal Capsule-tag style background
+                    ctx.fillStyle = 'rgba(15, 17, 23, 0.85)';
+                    const label = `#${index + 1} ${det.class_name}`;
+                    ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                    const textWidth = ctx.measureText(label).width;
+                    
+                    // Capsule Draw
+                    ctx.beginPath();
+                    ctx.roundRect(rx, ry - 20 > 0 ? ry - 20 : ry + 4, textWidth + 10, 16, 4);
+                    ctx.fill();
+
+                    // Text String Write
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillText(label, rx + 5, ry - 20 > 0 ? ry - 8 : ry + 16);
+                });
+            }
+
+            if (targetImg.complete) {
+                drawBoxes();
+            } else {
+                targetImg.onload = drawBoxes;
+            }
+            
+            window.addEventListener('resize', drawBoxes);
+        {% endif %}
+    </script>
+</body>
+</html>
