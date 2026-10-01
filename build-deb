@@ -1,5 +1,5 @@
 #!/bin/bash
-# build_deb.sh - One-step DEB build for RMS Oral App
+# build-deb.sh - One-step DEB build for RMS Oral App
 # Tested layout: root app.py + clinical/ models/ utils/ static/ templates/ screenshots/
 
 set -e
@@ -115,7 +115,6 @@ fi
 # ---------------- Create directory structure ----------------
 echo -e "${YELLOW}📁 Creating package structure...${NC}"
 
-# Directories inside the package
 mkdir -p "${PKG_DIR}/usr/lib/${APP_NAME}"
 mkdir -p "${PKG_DIR}/usr/share/doc/${APP_NAME}"
 mkdir -p "${PKG_DIR}/usr/share/applications"
@@ -126,6 +125,45 @@ mkdir -p "${PKG_DIR}/var/lib/${APP_NAME}/uploads"
 mkdir -p "${PKG_DIR}/var/lib/${APP_NAME}/models"
 mkdir -p "${PKG_DIR}/var/lib/${APP_NAME}/results"
 mkdir -p "${PKG_DIR}/lib/systemd/system"
+
+# ---------------- Ship default config as a real conffile ----------------
+# IMPORTANT: dpkg-deb requires every path listed in DEBIAN/conffiles to
+# physically exist inside the package payload, so we ship it here.
+echo -e "${YELLOW}📝 Writing default /etc/${APP_NAME}/config.py (conffile)...${NC}"
+
+cat > "${PKG_DIR}/etc/${APP_NAME}/config.py" << CONFIG
+# RMS Oral - Configuration File
+HOST = '${APP_HOST}'
+PORT = ${APP_PORT}
+DEBUG = False
+SECRET_KEY = 'change-this-secret-key-in-production'
+
+BASE_DIR   = '/usr/share/${APP_NAME}'
+LOG_DIR    = '/var/log/${APP_NAME}'
+UPLOAD_DIR = '/var/lib/${APP_NAME}/uploads'
+MODEL_DIR  = '/var/lib/${APP_NAME}/models'
+RESULT_DIR = '/var/lib/${APP_NAME}/results'
+
+IMAGE_SIZE = (224, 224)
+BATCH_SIZE = 32
+CONFIDENCE_THRESHOLD = 0.5
+
+CLASS_NAMES = [
+    'Normal',
+    'Oral Lichen Planus',
+    'Oral Leukoplakia',
+    'Oral Squamous Cell Carcinoma',
+    'Oral Submucous Fibrosis',
+]
+
+MAX_FILE_SIZE = 10 * 1024 * 1024
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'bmp'}
+
+LOG_LEVEL  = 'INFO'
+LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+CONFIG
+
+chmod 644 "${PKG_DIR}/etc/${APP_NAME}/config.py"
 
 # Docs
 cat > "${PKG_DIR}/usr/share/doc/${APP_NAME}/README" << EOF
@@ -165,6 +203,8 @@ EOF
 echo -e "${YELLOW}📝 Writing helper scripts...${NC}"
 
 # --- postinst helper (called by DEBIAN/postinst) ---
+# NOTE: no longer writes /etc/${APP_NAME}/config.py — that file is now a
+# conffile shipped inside the .deb and managed by dpkg.
 cat > "${PKG_DIR}/usr/lib/${APP_NAME}/post-install.sh" << POSTINST_EOF
 #!/bin/bash
 set -e
@@ -232,41 +272,6 @@ PYEOF
 
 deactivate
 
-if [ ! -f /etc/${APP_NAME}/config.py ]; then
-    echo "📝 Writing default /etc/${APP_NAME}/config.py"
-    cat > /etc/${APP_NAME}/config.py << 'CONFIG'
-# RMS Oral - Configuration File
-HOST = '${APP_HOST}'
-PORT = ${APP_PORT}
-DEBUG = False
-SECRET_KEY = 'change-this-secret-key-in-production'
-
-BASE_DIR   = '/usr/share/${APP_NAME}'
-LOG_DIR    = '/var/log/${APP_NAME}'
-UPLOAD_DIR = '/var/lib/${APP_NAME}/uploads'
-MODEL_DIR  = '/var/lib/${APP_NAME}/models'
-RESULT_DIR = '/var/lib/${APP_NAME}/results'
-
-IMAGE_SIZE = (224, 224)
-BATCH_SIZE = 32
-CONFIDENCE_THRESHOLD = 0.5
-
-CLASS_NAMES = [
-    'Normal',
-    'Oral Lichen Planus',
-    'Oral Leukoplakia',
-    'Oral Squamous Cell Carcinoma',
-    'Oral Submucous Fibrosis',
-]
-
-MAX_FILE_SIZE = 10 * 1024 * 1024
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'bmp'}
-
-LOG_LEVEL  = 'INFO'
-LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-CONFIG
-fi
-
 cat > /usr/bin/${APP_NAME} << 'LAUNCHER'
 #!/bin/bash
 cd /usr/share/${APP_NAME}
@@ -313,7 +318,7 @@ chmod 755 /var/log/${APP_NAME} \\
           /var/lib/${APP_NAME}/uploads \\
           /var/lib/${APP_NAME}/models \\
           /var/lib/${APP_NAME}/results
-chmod 644 /etc/${APP_NAME}/config.py
+chmod 644 /etc/${APP_NAME}/config.py || true
 
 echo "✅ Setup complete."
 exit 0
@@ -369,7 +374,7 @@ case "\$1" in
         systemctl daemon-reload 2>/dev/null || true
         rm -f /usr/bin/${APP_NAME}
         # Data is intentionally preserved. Uncomment to purge:
-        # rm -rf /usr/share/${APP_NAME} /var/log/${APP_NAME} /var/lib/${APP_NAME} /etc/${APP_NAME}
+        # rm -rf /usr/share/${APP_NAME} /var/log/${APP_NAME} /var/lib/${APP_NAME}
         ;;
 esac
 exit 0
@@ -401,7 +406,9 @@ Description: ${DESCRIPTION}
  A local web interface (Flask) is provided on port ${APP_PORT}.
 EOF
 
-# conffiles — mark config.py as a conffile so dpkg preserves admin edits
+# conffiles — mark config.py as a conffile so dpkg preserves admin edits.
+# NOTE: /etc/${APP_NAME}/config.py must physically exist in the payload
+# (created above). dpkg-deb validates this.
 cat > "${DEBIAN_DIR}/conffiles" << EOF
 /etc/${APP_NAME}/config.py
 EOF
@@ -410,8 +417,6 @@ EOF
 cat > "${DEBIAN_DIR}/postinst" << 'EOF'
 #!/bin/bash
 set -e
-
-ACTION="$1"
 
 # Refresh systemd cache if available
 if command -v systemctl >/dev/null 2>&1; then
@@ -449,7 +454,6 @@ case "$ACTION" in
         fi
         ;;
     upgrade)
-        # Stop the running service during upgrade, restart happens post-install
         systemctl stop rms-oral 2>/dev/null || true
         ;;
 esac
@@ -490,6 +494,7 @@ find "${PKG_DIR}" -type d -exec chmod 755 {} \;
 find "${PKG_DIR}" -type f -name "*.py" -exec chmod 644 {} \;
 chmod 755 "${PKG_DIR}/usr/share/${APP_NAME}/app.py"
 chmod 755 "${PKG_DIR}/usr/lib/${APP_NAME}"/*.sh 2>/dev/null || true
+chmod 644 "${PKG_DIR}/etc/${APP_NAME}/config.py"
 chmod 755 "${DEBIAN_DIR}/postinst" "${DEBIAN_DIR}/prerm" "${DEBIAN_DIR}/postrm"
 
 fakeroot dpkg-deb --build --root-owner-group "${PKG_DIR}" "${APP_NAME}_${VERSION}-${RELEASE}_${DEB_ARCH}.deb"
@@ -508,7 +513,7 @@ echo ""
 echo -e "${GREEN}Uninstall:${NC}"
 echo "  sudo apt remove ${APP_NAME}"
 echo ""
-echo -e "${GREEN}Purge (remove + data):${NC}"
+echo -e "${GREEN}Purge (remove + config):${NC}"
 echo "  sudo apt purge ${APP_NAME}"
 echo ""
 echo -e "${GREEN}Start:${NC}"
