@@ -1,0 +1,520 @@
+#!/bin/bash
+# build_deb.sh - One-step DEB build for RMS Oral App
+# Tested layout: root app.py + clinical/ models/ utils/ static/ templates/ screenshots/
+
+set -e
+
+# ---------------- Colors ----------------
+GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; BLUE='\033[0;34m'; NC='\033[0m'
+
+# ---------------- Configuration ----------------
+APP_NAME="rms-oral"
+VERSION="1.0.0"
+RELEASE="1"
+MAINTAINER="KYGnus <kygnus.co@proton.me>"
+DESCRIPTION="RMS Oral - AI-powered oral lesion classification using deep learning"
+URL="https://github.com/KooshaYeganeh/RMS-oral"
+LICENSE="MIT"
+ARCH="all"
+
+APP_PORT="5005"
+APP_HOST="0.0.0.0"
+
+# Debian package architecture mapping
+DEB_ARCH="all"
+
+BUILD_DIR="$(pwd)/deb_build"
+PKG_DIR="${BUILD_DIR}/${APP_NAME}_${VERSION}-${RELEASE}_${DEB_ARCH}"
+DEBIAN_DIR="${PKG_DIR}/DEBIAN"
+
+echo -e "${GREEN}🚀 Building .deb for ${APP_NAME} ${VERSION} (port ${APP_PORT})${NC}"
+
+# ---------------- Prereq check ----------------
+MISSING=""
+for cmd in dpkg-deb rsync fakeroot; do
+    if ! command -v "$cmd" &>/dev/null; then
+        MISSING="$MISSING $cmd"
+    fi
+done
+
+if [ -n "$MISSING" ]; then
+    echo -e "${RED}❌ Missing required tools:${MISSING}${NC}"
+    echo "   Debian/Ubuntu: sudo apt-get install dpkg-dev debhelper rsync fakeroot"
+    echo "   Fedora/RHEL:   sudo dnf install dpkg dpkg-dev rsync fakeroot"
+    exit 1
+fi
+
+# ---------------- Clean ----------------
+echo -e "${YELLOW}🧹 Cleaning previous builds...${NC}"
+rm -rf "${BUILD_DIR}"
+rm -f ${APP_NAME}_*.deb
+mkdir -p "${PKG_DIR}" "${DEBIAN_DIR}"
+
+# ---------------- Stage sources ----------------
+echo -e "${YELLOW}📦 Staging sources...${NC}"
+
+for f in app.py config.py requirements.txt; do
+    if [ ! -e "$f" ]; then
+        echo -e "${RED}❌ Missing required file: $f${NC}"
+        exit 1
+    fi
+done
+
+APP_DIR="${PKG_DIR}/usr/share/${APP_NAME}"
+mkdir -p "${APP_DIR}"
+
+copy_tree() {
+    local src="$1"
+    [ -e "$src" ] || return 0
+    rsync -a --exclude='venv/' \
+             --exclude='.venv/' \
+             --exclude='__pycache__/' \
+             --exclude='*.pyc' \
+             --exclude='*.pyo' \
+             --exclude='.git/' \
+             --exclude='.idea/' \
+             --exclude='.vscode/' \
+             --exclude='rpmbuild/' \
+             --exclude='deb_build/' \
+             --exclude='deb_package/' \
+             --exclude='*.deb' \
+             --exclude='*.rpm' \
+             "$src" "${APP_DIR}/"
+}
+
+copy_tree app.py
+copy_tree config.py
+copy_tree LICENSE
+copy_tree README.md
+copy_tree requirements.txt
+copy_tree clinical
+copy_tree models
+copy_tree utils
+copy_tree static
+copy_tree templates
+copy_tree screenshots
+
+# Fallback requirements if file is empty
+if [ ! -s "${APP_DIR}/requirements.txt" ]; then
+    echo -e "${YELLOW}⚠️  requirements.txt empty, writing default...${NC}"
+    cat > "${APP_DIR}/requirements.txt" << 'REQ'
+flask>=2.3.0
+torch>=2.1.0
+torchvision>=0.16.0
+ultralytics>=8.0.0
+transformers>=4.35.0
+numpy>=1.24.0
+pillow>=10.0.0
+opencv-python>=4.8.0
+scikit-learn>=1.3.0
+matplotlib>=3.7.0
+tqdm>=4.65.0
+REQ
+fi
+
+# ---------------- Create directory structure ----------------
+echo -e "${YELLOW}📁 Creating package structure...${NC}"
+
+# Directories inside the package
+mkdir -p "${PKG_DIR}/usr/lib/${APP_NAME}"
+mkdir -p "${PKG_DIR}/usr/share/doc/${APP_NAME}"
+mkdir -p "${PKG_DIR}/usr/share/applications"
+mkdir -p "${PKG_DIR}/usr/bin"
+mkdir -p "${PKG_DIR}/etc/${APP_NAME}"
+mkdir -p "${PKG_DIR}/var/log/${APP_NAME}"
+mkdir -p "${PKG_DIR}/var/lib/${APP_NAME}/uploads"
+mkdir -p "${PKG_DIR}/var/lib/${APP_NAME}/models"
+mkdir -p "${PKG_DIR}/var/lib/${APP_NAME}/results"
+mkdir -p "${PKG_DIR}/lib/systemd/system"
+
+# Docs
+cat > "${PKG_DIR}/usr/share/doc/${APP_NAME}/README" << EOF
+${DESCRIPTION}
+
+Quick start:
+  1. Edit config:  sudo nano /etc/${APP_NAME}/config.py
+  2. Start:        sudo systemctl start ${APP_NAME}
+  3. Access:       http://localhost:${APP_PORT}
+EOF
+
+cat > "${PKG_DIR}/usr/share/doc/${APP_NAME}/copyright" << EOF
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: ${APP_NAME}
+Source: ${URL}
+
+Files: *
+Copyright: $(date +%Y) ${MAINTAINER}
+License: ${LICENSE}
+EOF
+
+# Desktop entry
+cat > "${PKG_DIR}/usr/share/applications/${APP_NAME}.desktop" << EOF
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=RMS Oral
+Comment=AI-powered oral lesion detection
+Exec=${APP_NAME}
+Icon=medical
+Terminal=false
+Categories=Science;Medicine;Healthcare;
+Keywords=oral;lesion;detection;ai;machine-learning;medical
+EOF
+
+# ---------------- Helper scripts (shipped inside package) ----------------
+echo -e "${YELLOW}📝 Writing helper scripts...${NC}"
+
+# --- postinst helper (called by DEBIAN/postinst) ---
+cat > "${PKG_DIR}/usr/lib/${APP_NAME}/post-install.sh" << POSTINST_EOF
+#!/bin/bash
+set -e
+
+APP_DIR="/usr/share/${APP_NAME}"
+
+echo "🔧 Setting up ${APP_NAME}..."
+
+mkdir -p /var/log/${APP_NAME} \\
+         /var/lib/${APP_NAME}/uploads \\
+         /var/lib/${APP_NAME}/models \\
+         /var/lib/${APP_NAME}/results \\
+         /etc/${APP_NAME}
+
+if ! command -v python3 >/dev/null; then
+    echo "❌ python3 is required but not installed."
+    exit 1
+fi
+
+PY_VER=\$(python3 -c 'import sys; print("%d.%d" % sys.version_info[:2])')
+echo "ℹ️  Found Python \$PY_VER"
+
+# Ensure pip + venv
+if ! python3 -m pip --version >/dev/null 2>&1 || ! python3 -m venv --help >/dev/null 2>&1; then
+    echo "📦 Installing pip / venv bootstrap..."
+    if command -v apt-get >/dev/null; then
+        apt-get update && apt-get install -y python3-pip python3-venv python3-dev gcc g++ || true
+    elif command -v dnf >/dev/null; then
+        dnf install -y python3-pip python3-virtualenv python3-devel gcc gcc-c++ || true
+    elif command -v yum >/dev/null; then
+        yum install -y python3-pip python3-virtualenv python3-devel gcc gcc-c++ || true
+    fi
+fi
+
+if command -v nvidia-smi >/dev/null; then
+    echo "✅ NVIDIA GPU detected - CUDA support available"
+else
+    echo "ℹ️  No NVIDIA GPU detected - CPU mode"
+fi
+
+cd "\$APP_DIR"
+
+rm -rf venv
+echo "🐍 Creating virtualenv with Python \$PY_VER..."
+python3 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip wheel setuptools
+
+echo "📦 Installing Python dependencies (this may take a few minutes)..."
+if [ -s requirements.txt ]; then
+    pip install -r requirements.txt
+else
+    pip install flask torch torchvision ultralytics transformers numpy pillow \\
+                opencv-python scikit-learn matplotlib tqdm
+fi
+
+python - <<'PYEOF' || true
+try:
+    import torch
+    print(f"Torch version: {torch.__version__}")
+    print(f"CUDA available: {torch.cuda.is_available()}")
+except Exception as e:
+    print(f"torch import check skipped: {e}")
+PYEOF
+
+deactivate
+
+if [ ! -f /etc/${APP_NAME}/config.py ]; then
+    echo "📝 Writing default /etc/${APP_NAME}/config.py"
+    cat > /etc/${APP_NAME}/config.py << 'CONFIG'
+# RMS Oral - Configuration File
+HOST = '${APP_HOST}'
+PORT = ${APP_PORT}
+DEBUG = False
+SECRET_KEY = 'change-this-secret-key-in-production'
+
+BASE_DIR   = '/usr/share/${APP_NAME}'
+LOG_DIR    = '/var/log/${APP_NAME}'
+UPLOAD_DIR = '/var/lib/${APP_NAME}/uploads'
+MODEL_DIR  = '/var/lib/${APP_NAME}/models'
+RESULT_DIR = '/var/lib/${APP_NAME}/results'
+
+IMAGE_SIZE = (224, 224)
+BATCH_SIZE = 32
+CONFIDENCE_THRESHOLD = 0.5
+
+CLASS_NAMES = [
+    'Normal',
+    'Oral Lichen Planus',
+    'Oral Leukoplakia',
+    'Oral Squamous Cell Carcinoma',
+    'Oral Submucous Fibrosis',
+]
+
+MAX_FILE_SIZE = 10 * 1024 * 1024
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'bmp'}
+
+LOG_LEVEL  = 'INFO'
+LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+CONFIG
+fi
+
+cat > /usr/bin/${APP_NAME} << 'LAUNCHER'
+#!/bin/bash
+cd /usr/share/${APP_NAME}
+export PYTHONPATH=/usr/share/${APP_NAME}
+source venv/bin/activate
+export FLASK_APP=app.py
+export FLASK_ENV=production
+export RMS_ORAL_CONFIG=/etc/${APP_NAME}/config.py
+exec python app.py "\$@"
+LAUNCHER
+chmod 755 /usr/bin/${APP_NAME}
+
+cat > /lib/systemd/system/${APP_NAME}.service << 'SERVICE'
+[Unit]
+Description=RMS Oral Service
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/usr/share/${APP_NAME}
+Environment="PATH=/usr/share/${APP_NAME}/venv/bin:/usr/local/bin:/usr/bin:/bin"
+Environment="FLASK_APP=app.py"
+Environment="FLASK_ENV=production"
+Environment="RMS_ORAL_CONFIG=/etc/${APP_NAME}/config.py"
+Environment="PYTHONPATH=/usr/share/${APP_NAME}"
+ExecStart=/usr/share/${APP_NAME}/venv/bin/python /usr/share/${APP_NAME}/app.py
+Restart=always
+RestartSec=10
+StandardOutput=append:/var/log/${APP_NAME}/access.log
+StandardError=append:/var/log/${APP_NAME}/error.log
+
+[Install]
+WantedBy=multi-user.target
+SERVICE
+
+systemctl daemon-reload 2>/dev/null || true
+
+chown -R root:root /usr/share/${APP_NAME}
+chmod 755 /usr/share/${APP_NAME}
+chmod 755 /var/log/${APP_NAME} \\
+          /var/lib/${APP_NAME}/uploads \\
+          /var/lib/${APP_NAME}/models \\
+          /var/lib/${APP_NAME}/results
+chmod 644 /etc/${APP_NAME}/config.py
+
+echo "✅ Setup complete."
+exit 0
+POSTINST_EOF
+chmod 755 "${PKG_DIR}/usr/lib/${APP_NAME}/post-install.sh"
+
+# --- post-trans helper ---
+cat > "${PKG_DIR}/usr/lib/${APP_NAME}/post-trans.sh" << POSTTRANS_EOF
+#!/bin/bash
+APP_PORT="__PORT__"
+APP_NAME="__NAME__"
+LOG="/var/log/\${APP_NAME}/error.log"
+
+echo "🔍 Verifying \${APP_NAME} service..."
+
+systemctl start \${APP_NAME}.service 2>/dev/null || true
+
+for i in \$(seq 1 30); do
+    if curl -fsS -o /dev/null "http://127.0.0.1:\${APP_PORT}/" 2>/dev/null; then
+        echo "✅ \${APP_NAME} is responding on port \${APP_PORT}"
+        exit 0
+    fi
+    sleep 1
+done
+
+echo "⚠️  \${APP_NAME} did not respond on port \${APP_PORT} within 30s."
+echo "    Check the logs:"
+echo "        journalctl -u \${APP_NAME} -n 80 --no-pager"
+echo "        tail -n 80 \${LOG}"
+echo "    Then start manually:"
+echo "        sudo systemctl start \${APP_NAME}"
+exit 0
+POSTTRANS_EOF
+sed -i "s/__PORT__/${APP_PORT}/g; s/__NAME__/${APP_NAME}/g" "${PKG_DIR}/usr/lib/${APP_NAME}/post-trans.sh"
+chmod 755 "${PKG_DIR}/usr/lib/${APP_NAME}/post-trans.sh"
+
+# --- pre-uninstall helper ---
+cat > "${PKG_DIR}/usr/lib/${APP_NAME}/pre-uninstall.sh" << PREUN_EOF
+#!/bin/bash
+systemctl stop ${APP_NAME} 2>/dev/null || true
+systemctl disable ${APP_NAME} 2>/dev/null || true
+exit 0
+PREUN_EOF
+chmod 755 "${PKG_DIR}/usr/lib/${APP_NAME}/pre-uninstall.sh"
+
+# --- post-uninstall helper ---
+cat > "${PKG_DIR}/usr/lib/${APP_NAME}/post-uninstall.sh" << POSTUN_EOF
+#!/bin/bash
+# \$1 = "remove" or "upgrade" (Debian) / "0" or "1" (RPM-style)
+case "\$1" in
+    remove|0|"")
+        rm -f /lib/systemd/system/${APP_NAME}.service
+        systemctl daemon-reload 2>/dev/null || true
+        rm -f /usr/bin/${APP_NAME}
+        # Data is intentionally preserved. Uncomment to purge:
+        # rm -rf /usr/share/${APP_NAME} /var/log/${APP_NAME} /var/lib/${APP_NAME} /etc/${APP_NAME}
+        ;;
+esac
+exit 0
+POSTUN_EOF
+chmod 755 "${PKG_DIR}/usr/lib/${APP_NAME}/post-uninstall.sh"
+
+# ---------------- DEBIAN control files ----------------
+echo -e "${YELLOW}📝 Writing DEBIAN control files...${NC}"
+
+INSTALLED_SIZE=$(du -sk "${PKG_DIR}/usr" "${PKG_DIR}/etc" "${PKG_DIR}/var" 2>/dev/null | awk '{s+=$1} END {print s}')
+[ -z "$INSTALLED_SIZE" ] && INSTALLED_SIZE=1
+
+cat > "${DEBIAN_DIR}/control" << EOF
+Package: ${APP_NAME}
+Version: ${VERSION}-${RELEASE}
+Section: science
+Priority: optional
+Architecture: ${DEB_ARCH}
+Depends: python3 (>= 3.8), python3-pip, python3-venv, python3-dev, gcc, g++, curl, systemd
+Installed-Size: ${INSTALLED_SIZE}
+Maintainer: ${MAINTAINER}
+Homepage: ${URL}
+Description: ${DESCRIPTION}
+ AI-powered oral lesion classification using deep learning.
+ .
+ Classes covered: Normal, Oral Lichen Planus, Oral Leukoplakia,
+ Oral Squamous Cell Carcinoma, Oral Submucous Fibrosis.
+ .
+ A local web interface (Flask) is provided on port ${APP_PORT}.
+EOF
+
+# conffiles — mark config.py as a conffile so dpkg preserves admin edits
+cat > "${DEBIAN_DIR}/conffiles" << EOF
+/etc/${APP_NAME}/config.py
+EOF
+
+# postinst — runs post-install (fresh install AND upgrade)
+cat > "${DEBIAN_DIR}/postinst" << 'EOF'
+#!/bin/bash
+set -e
+
+ACTION="$1"
+
+# Refresh systemd cache if available
+if command -v systemctl >/dev/null 2>&1; then
+    systemctl daemon-reload || true
+fi
+
+# Run main setup
+if [ -x /usr/lib/rms-oral/post-install.sh ]; then
+    /usr/lib/rms-oral/post-install.sh || true
+fi
+
+# --- Post-transaction style self-test ---
+if [ -x /usr/lib/rms-oral/post-trans.sh ]; then
+    /usr/lib/rms-oral/post-trans.sh || true
+fi
+
+exit 0
+EOF
+chmod 755 "${DEBIAN_DIR}/postinst"
+
+# prerm — pre-remove
+cat > "${DEBIAN_DIR}/prerm" << 'EOF'
+#!/bin/bash
+set -e
+
+ACTION="$1"  # remove | upgrade | deconfigure | failed-upgrade
+
+case "$ACTION" in
+    remove|deconfigure)
+        if [ -x /usr/lib/rms-oral/pre-uninstall.sh ]; then
+            /usr/lib/rms-oral/pre-uninstall.sh || true
+        else
+            systemctl stop rms-oral 2>/dev/null || true
+            systemctl disable rms-oral 2>/dev/null || true
+        fi
+        ;;
+    upgrade)
+        # Stop the running service during upgrade, restart happens post-install
+        systemctl stop rms-oral 2>/dev/null || true
+        ;;
+esac
+
+exit 0
+EOF
+chmod 755 "${DEBIAN_DIR}/prerm"
+
+# postrm — post-remove
+cat > "${DEBIAN_DIR}/postrm" << 'EOF'
+#!/bin/bash
+set -e
+
+ACTION="$1"
+
+if [ -x /usr/lib/rms-oral/post-uninstall.sh ]; then
+    /usr/lib/rms-oral/post-uninstall.sh "$ACTION" || true
+fi
+
+if command -v systemctl >/dev/null 2>&1; then
+    systemctl daemon-reload || true
+fi
+
+exit 0
+EOF
+chmod 755 "${DEBIAN_DIR}/postrm"
+
+# md5sums
+echo -e "${YELLOW}🔐 Generating md5sums...${NC}"
+( cd "${PKG_DIR}" && find . -type f ! -path './DEBIAN/*' -exec md5sum {} \; | sed 's| \./| |' ) > "${DEBIAN_DIR}/md5sums" || true
+
+# ---------------- Build .deb ----------------
+echo -e "${YELLOW}🔨 Running dpkg-deb...${NC}"
+
+# Fix ownership — all root:root inside the package
+chown -R root:root "${PKG_DIR}" 2>/dev/null || true
+find "${PKG_DIR}" -type d -exec chmod 755 {} \;
+find "${PKG_DIR}" -type f -name "*.py" -exec chmod 644 {} \;
+chmod 755 "${PKG_DIR}/usr/share/${APP_NAME}/app.py"
+chmod 755 "${PKG_DIR}/usr/lib/${APP_NAME}"/*.sh 2>/dev/null || true
+chmod 755 "${DEBIAN_DIR}/postinst" "${DEBIAN_DIR}/prerm" "${DEBIAN_DIR}/postrm"
+
+fakeroot dpkg-deb --build --root-owner-group "${PKG_DIR}" "${APP_NAME}_${VERSION}-${RELEASE}_${DEB_ARCH}.deb"
+
+FINAL="${APP_NAME}_${VERSION}-${RELEASE}_${DEB_ARCH}.deb"
+
+# ---------------- Cleanup ----------------
+rm -rf "${BUILD_DIR}"
+
+echo ""
+echo -e "${GREEN}✅ Created: ${FINAL}  ($(du -h ${FINAL} | cut -f1))${NC}"
+echo ""
+echo -e "${GREEN}Install:${NC}"
+echo "  sudo apt install ./${FINAL}      # or: sudo dpkg -i ${FINAL} && sudo apt-get -f install"
+echo ""
+echo -e "${GREEN}Uninstall:${NC}"
+echo "  sudo apt remove ${APP_NAME}"
+echo ""
+echo -e "${GREEN}Purge (remove + data):${NC}"
+echo "  sudo apt purge ${APP_NAME}"
+echo ""
+echo -e "${GREEN}Start:${NC}"
+echo "  sudo systemctl start ${APP_NAME} && sudo systemctl enable ${APP_NAME}"
+echo ""
+echo -e "${GREEN}Access:${NC}"
+echo "  http://localhost:${APP_PORT}"
+echo ""
+echo -e "${BLUE}ℹ️  GPU: install nvidia drivers + cuda-toolkit for accelerated inference${NC}"
